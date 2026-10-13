@@ -367,8 +367,9 @@ function GeometryStep({
         </Field>
       </div>
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
-        Po prawej: widok <strong>3D</strong> (długość i szerokość wzdłuż krawędzi)
-        albo <strong>Przekrój</strong> (kąt dachu i wysokość ścian z boku).
+        Po prawej zobaczysz realistyczny podgląd dachu. Przełącz{" "}
+        <strong>3D</strong> / <strong>Przekrój</strong> — wymiary długości,
+        szerokości i wysokości aktualizują się na bieżąco.
       </p>
     </div>
   );

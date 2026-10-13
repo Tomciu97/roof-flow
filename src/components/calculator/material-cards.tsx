@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 import type {
   CoveringStandard,
@@ -14,6 +15,13 @@ import {
   ROOF_TYPE_LABELS,
 } from "@/lib/constants";
 
+const ROOF_THUMBS: Record<RoofType, string> = {
+  gabled: "/visuals/roofs/roof-gabled-3d.jpg",
+  hip: "/visuals/roofs/roof-hip-3d.jpg",
+  monopitch: "/visuals/roofs/roof-monopitch-3d.jpg",
+  flat: "/visuals/roofs/roof-flat-3d.jpg",
+};
+
 export function RoofTypeCards({
   value,
   onChange,
@@ -21,11 +29,11 @@ export function RoofTypeCards({
   value: RoofType;
   onChange: (v: RoofType) => void;
 }) {
-  const items: { id: RoofType; hint: string; sketch: string }[] = [
-    { id: "gabled", hint: "Klasyczny dom z kalenicą", sketch: "M4 16 L16 4 L28 16 Z" },
-    { id: "hip", hint: "Cztery połacie, mniej odpadów wiatru", sketch: "M4 16 L16 5 L28 16 L22 16 L16 10 L10 16 Z" },
-    { id: "monopitch", hint: "Nowoczesny dach jednospadowy", sketch: "M4 14 L28 6 L28 16 L4 16 Z" },
-    { id: "flat", hint: "Dach płaski / stropodach", sketch: "M4 12 H28 V16 H4 Z" },
+  const items: { id: RoofType; hint: string }[] = [
+    { id: "gabled", hint: "Klasyczny dom z kalenicą" },
+    { id: "hip", hint: "Cztery połacie — widać w podglądzie 3D" },
+    { id: "monopitch", hint: "Nowoczesny dach jednospadowy" },
+    { id: "flat", hint: "Dach płaski / stropodach" },
   ];
 
   return (
@@ -38,19 +46,28 @@ export function RoofTypeCards({
             type="button"
             onClick={() => onChange(item.id)}
             className={cn(
-              "flex items-start gap-3 rounded-xl border px-3 py-3 text-left transition",
+              "overflow-hidden rounded-xl border text-left transition",
               active
-                ? "border-[var(--rf-accent)] bg-teal-50/80 ring-2 ring-[var(--rf-accent)]/20"
+                ? "border-[var(--rf-accent)] ring-2 ring-[var(--rf-accent)]/25"
                 : "border-[var(--rf-border)] bg-white hover:border-teal-300"
             )}
           >
-            <svg viewBox="0 0 32 20" className="mt-0.5 h-10 w-14 shrink-0">
-              <rect x="8" y="12" width="16" height="7" fill="#f1f5f9" stroke="#94a3b8" />
-              <path d={item.sketch} fill={active ? "#0f766e" : "#94a3b8"} opacity="0.9" />
-            </svg>
-            <span>
-              <span className="block text-sm font-semibold">{ROOF_TYPE_LABELS[item.id]}</span>
-              <span className="mt-0.5 block text-xs text-[var(--rf-muted)]">{item.hint}</span>
+            <span className="relative block h-20 w-full bg-slate-100">
+              <Image
+                src={ROOF_THUMBS[item.id]}
+                alt={ROOF_TYPE_LABELS[item.id]}
+                fill
+                className="object-cover"
+                sizes="200px"
+              />
+            </span>
+            <span className="block px-3 py-2.5">
+              <span className="block text-sm font-semibold">
+                {ROOF_TYPE_LABELS[item.id]}
+              </span>
+              <span className="mt-0.5 block text-xs text-[var(--rf-muted)]">
+                {item.hint}
+              </span>
             </span>
           </button>
         );
