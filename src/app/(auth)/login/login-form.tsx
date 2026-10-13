@@ -17,7 +17,7 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
 
   async function enterDemo(
-    company = "Demo Dekarz Marian",
+    company = "Dekarz Marian",
     opts?: { city?: string; postalCode?: string; plan?: "starter" | "pro" }
   ) {
     setLoading(true);

@@ -99,7 +99,7 @@ export function demoTenant(): Tenant {
   return {
     id: "demo-dekarz-marian",
     user_id: "demo",
-    name: "Demo Dekarz Marian",
+    name: "Dekarz Marian",
     slug: "dekarz-marian",
     logo_url: null,
     brand_color: "#0f766e",

@@ -140,8 +140,13 @@ export function listCompanies() {
 export function upsertCompany(company: CompanyProfile) {
   const s = store();
   const idx = s.companies.findIndex((c) => c.id === company.id || c.slug === company.slug);
-  if (idx >= 0) s.companies[idx] = { ...s.companies[idx], ...company };
-  else s.companies.push(company);
+  if (idx >= 0) {
+    // Zachowaj stabilne id seeda przy merge po slug
+    const prev = s.companies[idx];
+    s.companies[idx] = { ...prev, ...company, id: prev.id };
+    return s.companies[idx];
+  }
+  s.companies.push(company);
   return company;
 }
 
