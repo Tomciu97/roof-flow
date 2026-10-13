@@ -22,7 +22,7 @@ export const B2B_PLANS = [
       "14 dni za darmo",
     ],
     missing: [
-      "Moduł poddasza i elewacji",
+      "Poddasze / elewacja — jako add-on +49 zł (oba = −50% na drugi)",
       "Własna domena (PRO)",
       "Whitelabel + SMS",
       "Leady bez limitu",
@@ -55,20 +55,74 @@ export const B2B_PLANS = [
   },
 ] as const;
 
+export type B2BAddonId = "insulation" | "facade";
+
 export const B2B_ADDONS = [
   {
-    id: "insulation",
+    id: "insulation" as const,
     name: "Add-on Poddasze",
     price: B2B_PRICES.insulationAddon,
     description: "Ocieplenie skosów: wełna, PUR, PIR + zabudowa GK w wycenie.",
   },
   {
-    id: "facade",
+    id: "facade" as const,
     name: "Add-on Elewacja",
     price: B2B_PRICES.facadeAddon,
     description: "Styropian grafitowy / wełna fasadowa, tynk i rusztowania.",
   },
 ] as const;
+
+export type B2BAddonSelection = {
+  insulation: boolean;
+  facade: boolean;
+};
+
+/** Rozbicie miesięcznej składki STARTER / PRO z add-onami. */
+export function computeB2BMonthly(opts: {
+  plan: B2BPlanId;
+  addons: B2BAddonSelection;
+}): {
+  base: number;
+  insulationPrice: number;
+  facadePrice: number;
+  total: number;
+  bundlePromo: boolean;
+  /** Który add-on jest przeceniony o 50% (przy obydwu na STARTER) */
+  discountedAddon: B2BAddonId | null;
+} {
+  if (opts.plan === "pro") {
+    return {
+      base: B2B_PRICES.pro,
+      insulationPrice: 0,
+      facadePrice: 0,
+      total: B2B_PRICES.pro,
+      bundlePromo: false,
+      discountedAddon: null,
+    };
+  }
+
+  const both = opts.addons.insulation && opts.addons.facade;
+  // Promocja „całość”: drugi add-on (elewacja) za 50%
+  const discountedAddon: B2BAddonId | null = both ? "facade" : null;
+
+  const insulationPrice = opts.addons.insulation
+    ? B2B_PRICES.insulationAddon
+    : 0;
+  const facadePrice = opts.addons.facade
+    ? both
+      ? B2B_PRICES.addonBundleHalfPrice
+      : B2B_PRICES.facadeAddon
+    : 0;
+
+  return {
+    base: B2B_PRICES.starter,
+    insulationPrice,
+    facadePrice,
+    total: B2B_PRICES.starter + insulationPrice + facadePrice,
+    bundlePromo: both,
+    discountedAddon,
+  };
+}
 
 export const B2C_PACKAGES = [
   {

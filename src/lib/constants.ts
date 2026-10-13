@@ -18,6 +18,8 @@ export const B2B_PRICES = {
   starter: 149,
   insulationAddon: 49,
   facadeAddon: 49,
+  /** Przy STARTER + oba add-ony — drugi add-on w promocji −50% */
+  addonBundleHalfPrice: 24.5,
   pro: 349,
   trialDays: 14,
 } as const;

@@ -73,6 +73,10 @@ export async function POST(request: Request) {
   const plan = body.plan === "pro" ? "pro" : "starter";
   const phone = body.phone ? String(body.phone) : undefined;
   const slug = slugify(company) || "dekarz-marian";
+  const insulationAddon =
+    plan === "pro" ? true : Boolean(body.insulation ?? body.insulationAddon);
+  const facadeAddon =
+    plan === "pro" ? true : Boolean(body.facade ?? body.facadeAddon);
 
   const city = String(body.city || "").trim() || "Kraków";
   const postalCode = formatPostal(
@@ -98,6 +102,8 @@ export async function POST(request: Request) {
     city,
     postalCode,
     serviceRadiusKm,
+    insulationAddon,
+    facadeAddon,
     createdAt: new Date().toISOString(),
   };
 

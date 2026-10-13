@@ -6,8 +6,15 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { B2BAddonsList, B2BPlanCards } from "@/components/marketing/plan-cards";
-import type { B2BPlanId } from "@/lib/plans";
+import {
+  B2BAddonPicker,
+  B2BPlanCards,
+} from "@/components/marketing/plan-cards";
+import {
+  computeB2BMonthly,
+  type B2BAddonSelection,
+  type B2BPlanId,
+} from "@/lib/plans";
 import { slugify } from "@/lib/utils";
 
 export function RegisterForm() {
@@ -23,14 +30,30 @@ export function RegisterForm() {
   const [city, setCity] = useState("Kraków");
   const [postalCode, setPostalCode] = useState("30-001");
   const [plan, setPlan] = useState<B2BPlanId>(initialPlan);
+  const [addons, setAddons] = useState<B2BAddonSelection>({
+    insulation: false,
+    facade: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const pricing = computeB2BMonthly({ plan, addons });
+
+  function selectPlan(next: B2BPlanId) {
+    setPlan(next);
+    if (next === "pro") {
+      setAddons({ insulation: true, facade: true });
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
+      const insulation = plan === "pro" ? true : addons.insulation;
+      const facade = plan === "pro" ? true : addons.facade;
+
       const res = await fetch("/api/demo-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -42,17 +65,24 @@ export function RegisterForm() {
           city,
           postalCode,
           plan,
+          insulation,
+          facade,
           checkout: true,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Błąd rejestracji demo");
 
-      // Próba Stripe Checkout (gdy skonfigurowane) — inaczej dashboard
       const checkout = await fetch("/api/checkout/b2b", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan, slug: slugify(company), demo: true }),
+        body: JSON.stringify({
+          plan,
+          slug: slugify(company),
+          insulation,
+          facade,
+          demo: true,
+        }),
       });
       const checkoutData = await checkout.json();
       if (checkout.ok && checkoutData.url && !checkoutData.demo) {
@@ -60,7 +90,9 @@ export function RegisterForm() {
         return;
       }
 
-      router.push(`/dashboard?plan=${plan}&trial=1`);
+      router.push(
+        `/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}`
+      );
       router.refresh();
     } catch (err) {
       setError(
@@ -84,16 +116,13 @@ export function RegisterForm() {
       <section>
         <h2 className="font-display text-2xl font-semibold">1. Wybierz plan</h2>
         <p className="mt-1 text-sm text-[var(--rf-muted)]">
-          Kliknij kartę, aby zobaczyć różnice i wybrać pakiet.
+          STARTER = dach. Dokładasz poddasze i/lub elewację poniżej. PRO = wszystko
+          od razu (whitelabel, domena, bez limitu leadów).
         </p>
         <div className="mt-5">
-          <B2BPlanCards
-            interactive
-            selected={plan}
-            onSelect={setPlan}
-          />
+          <B2BPlanCards interactive selected={plan} onSelect={selectPlan} />
         </div>
-        <B2BAddonsList />
+        <B2BAddonPicker plan={plan} value={addons} onChange={setAddons} />
       </section>
 
       <section>
@@ -175,9 +204,15 @@ export function RegisterForm() {
 
       <div className="flex flex-col gap-3 border-t border-[var(--rf-border)] pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-[var(--rf-muted)]">
-          Wybrany plan:{" "}
+          Wybrany pakiet:{" "}
           <strong className="text-[var(--rf-ink)] uppercase">{plan}</strong>
-          {" · "}14 dni gratis, potem płatność Stripe
+          {plan === "starter" && addons.insulation ? " + poddasze" : ""}
+          {plan === "starter" && addons.facade ? " + elewacja" : ""}
+          {" · "}
+          {pricing.total.toLocaleString("pl-PL", {
+            minimumFractionDigits: pricing.total % 1 ? 1 : 0,
+          })}{" "}
+          zł / m-c po trialu · 14 dni gratis
         </p>
         <Button type="submit" size="lg" disabled={loading}>
           {loading ? "Tworzenie konta…" : "Wejdź do panelu z wybranym planem"}

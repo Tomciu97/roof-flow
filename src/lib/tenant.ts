@@ -88,8 +88,8 @@ function tenantFromDemo(demo: DemoSession): Tenant {
     stripe_subscription_id: null,
     subscription_status: "trialing",
     plan_tier: demo.plan,
-    has_insulation_addon: isPro,
-    has_facade_addon: isPro,
+    has_insulation_addon: isPro || Boolean(demo.insulationAddon),
+    has_facade_addon: isPro || Boolean(demo.facadeAddon),
     custom_domain: null,
     created_at: demo.createdAt,
   };

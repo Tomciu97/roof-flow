@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getB2BPriceId, getStripe } from "@/lib/stripe";
 import { APP_URL, B2B_PRICES } from "@/lib/constants";
+import { computeB2BMonthly } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -13,14 +14,21 @@ export async function POST(request: Request) {
     };
 
     const plan = body.plan || "starter";
+    const insulation = plan === "pro" ? true : Boolean(body.insulation);
+    const facade = plan === "pro" ? true : Boolean(body.facade);
+    const pricing = computeB2BMonthly({
+      plan,
+      addons: { insulation, facade },
+    });
 
     if (
       !process.env.STRIPE_SECRET_KEY ||
       !process.env.STRIPE_SECRET_KEY.startsWith("sk_")
     ) {
       return NextResponse.json({
-        url: `${APP_URL}/dashboard?plan=${plan}&trial=1`,
+        url: `${APP_URL}/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}`,
         demo: true,
+        monthlyTotal: pricing.total,
         message:
           "Stripe nie jest skonfigurowany. Ustaw STRIPE_SECRET_KEY oraz Price ID (STRIPE_PRICE_B2B_*), aby uruchomić Checkout z trialem 14 dni.",
       });
@@ -61,32 +69,43 @@ export async function POST(request: Request) {
     }
 
     const prices = getB2BPriceId(plan, {
-      insulation: body.insulation,
-      facade: body.facade,
+      insulation: plan === "starter" && insulation,
+      facade: plan === "starter" && facade,
     });
 
-    const line_items: { price?: string; price_data?: object; quantity: number }[] =
-      [];
+    const line_items: {
+      price?: string;
+      price_data?: object;
+      quantity: number;
+    }[] = [];
 
     if (prices.main) {
       line_items.push({ price: prices.main, quantity: 1 });
-      for (const addon of prices.addons) {
-        line_items.push({ price: addon, quantity: 1 });
+      // Gotowe Price ID add-onów — pełna cena; promocję −50% rozliczamy
+      // przez price_data gdy brak osobnego Price ID promocji.
+      if (prices.addons.length && !pricing.bundlePromo) {
+        for (const addon of prices.addons) {
+          line_items.push({ price: addon, quantity: 1 });
+        }
+      } else if (plan === "starter") {
+        appendAddonPriceData(line_items, pricing, insulation, facade);
       }
     } else {
-      const unit =
-        plan === "pro" ? B2B_PRICES.pro * 100 : B2B_PRICES.starter * 100;
       line_items.push({
         quantity: 1,
         price_data: {
           currency: "pln",
-          unit_amount: unit,
+          unit_amount: Math.round(pricing.base * 100),
           recurring: { interval: "month" },
           product_data: {
-            name: plan === "pro" ? "RoofFlow PRO ALL-IN-ONE" : "RoofFlow STARTER",
+            name:
+              plan === "pro" ? "RoofFlow PRO ALL-IN-ONE" : "RoofFlow STARTER",
           },
         },
       });
+      if (plan === "starter") {
+        appendAddonPriceData(line_items, pricing, insulation, facade);
+      }
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -98,12 +117,20 @@ export async function POST(request: Request) {
         metadata: {
           user_id: user.id,
           plan,
+          insulation: String(insulation),
+          facade: String(facade),
           tenant_id: tenant?.id || "",
         },
       },
       success_url: `${APP_URL}/dashboard?subskrypcja=ok`,
       cancel_url: `${APP_URL}/dashboard/platnosci?anulowano=1`,
-      metadata: { type: "b2b_subscription", plan, user_id: user.id },
+      metadata: {
+        type: "b2b_subscription",
+        plan,
+        user_id: user.id,
+        insulation: String(insulation),
+        facade: String(facade),
+      },
     });
 
     return NextResponse.json({ url: session.url });
@@ -113,5 +140,39 @@ export async function POST(request: Request) {
       { error: e instanceof Error ? e.message : "Błąd checkout B2B" },
       { status: 500 }
     );
+  }
+}
+
+function appendAddonPriceData(
+  line_items: { price_data?: object; quantity: number }[],
+  pricing: ReturnType<typeof computeB2BMonthly>,
+  insulation: boolean,
+  facade: boolean
+) {
+  if (insulation && pricing.insulationPrice > 0) {
+    line_items.push({
+      quantity: 1,
+      price_data: {
+        currency: "pln",
+        unit_amount: Math.round(pricing.insulationPrice * 100),
+        recurring: { interval: "month" },
+        product_data: { name: "RoofFlow Add-on Poddasze" },
+      },
+    });
+  }
+  if (facade && pricing.facadePrice > 0) {
+    line_items.push({
+      quantity: 1,
+      price_data: {
+        currency: "pln",
+        unit_amount: Math.round(pricing.facadePrice * 100),
+        recurring: { interval: "month" },
+        product_data: {
+          name: pricing.bundlePromo
+            ? "RoofFlow Add-on Elewacja (−50% pakiet)"
+            : "RoofFlow Add-on Elewacja",
+        },
+      },
+    });
   }
 }

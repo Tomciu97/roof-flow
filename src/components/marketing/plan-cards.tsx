@@ -1,7 +1,15 @@
 "use client";
 
 import { Check, Minus } from "lucide-react";
-import { B2B_ADDONS, B2B_PLANS, B2C_PACKAGES, type B2BPlanId } from "@/lib/plans";
+import {
+  B2B_ADDONS,
+  B2B_PLANS,
+  B2C_PACKAGES,
+  computeB2BMonthly,
+  type B2BAddonSelection,
+  type B2BPlanId,
+} from "@/lib/plans";
+import { B2B_PRICES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
@@ -108,22 +116,169 @@ export function B2BPlanCards({
   );
 }
 
+/** Statyczna lista na landing — bez wyboru. */
 export function B2BAddonsList() {
   return (
-    <div className="mt-6 grid gap-3 sm:grid-cols-2">
-      {B2B_ADDONS.map((addon) => (
-        <div
-          key={addon.id}
-          className="rounded-xl border border-dashed border-[var(--rf-border)] bg-white/70 px-4 py-4"
-        >
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="font-semibold">{addon.name}</p>
-            <p className="font-display text-lg font-semibold">+{addon.price} zł</p>
+    <div className="mt-6 space-y-3">
+      <p className="text-sm text-[var(--rf-muted)]">
+        Do planu STARTER możesz dokładać moduły (po {B2B_PRICES.insulationAddon}{" "}
+        zł). Gdy weźmiesz oba — drugi w promocji −50%. W PRO wszystko w cenie.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {B2B_ADDONS.map((addon) => (
+          <div
+            key={addon.id}
+            className="rounded-xl border border-dashed border-[var(--rf-border)] bg-white/70 px-4 py-4"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="font-semibold">{addon.name}</p>
+              <p className="font-display text-lg font-semibold">+{addon.price} zł</p>
+            </div>
+            <p className="mt-1 text-sm text-[var(--rf-muted)]">{addon.description}</p>
+            <p className="mt-2 text-xs text-slate-500">
+              opcjonalnie do STARTER · w PRO w cenie
+            </p>
           </div>
-          <p className="mt-1 text-sm text-[var(--rf-muted)]">{addon.description}</p>
-          <p className="mt-2 text-xs text-slate-500">do planu STARTER · w PRO w cenie</p>
-        </div>
-      ))}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Interaktywny wybór add-onów przy rejestracji. */
+export function B2BAddonPicker({
+  plan,
+  value,
+  onChange,
+}: {
+  plan: B2BPlanId;
+  value: B2BAddonSelection;
+  onChange: (next: B2BAddonSelection) => void;
+}) {
+  const pricing = computeB2BMonthly({ plan, addons: value });
+  const isPro = plan === "pro";
+
+  function toggle(id: keyof B2BAddonSelection) {
+    if (isPro) return;
+    onChange({ ...value, [id]: !value[id] });
+  }
+
+  return (
+    <div className="mt-6 space-y-4">
+      <div>
+        <h3 className="font-display text-lg font-semibold">
+          1b. Moduły dodatkowe
+        </h3>
+        <p className="mt-1 text-sm text-[var(--rf-muted)]">
+          {isPro
+            ? "W PRO masz poddasze i elewację w cenie — nic nie dokładasz."
+            : "Robisz tylko dach? Zostaw odznaczone. Dach + elewacja albo poddasze — zaznacz wybrany add-on. Całość (oba) = promocja −50% na drugi."}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        {B2B_ADDONS.map((addon) => {
+          const checked = isPro || value[addon.id];
+          const isDiscounted =
+            !isPro &&
+            pricing.bundlePromo &&
+            pricing.discountedAddon === addon.id;
+          const displayPrice = isPro
+            ? 0
+            : isDiscounted
+              ? B2B_PRICES.addonBundleHalfPrice
+              : addon.price;
+
+          return (
+            <button
+              key={addon.id}
+              type="button"
+              disabled={isPro}
+              onClick={() => toggle(addon.id)}
+              className={cn(
+                "rounded-xl border px-4 py-4 text-left transition",
+                checked
+                  ? "border-[var(--rf-accent)] bg-teal-50/60 ring-1 ring-[var(--rf-accent)]"
+                  : "border-[var(--rf-border)] bg-white hover:border-slate-300",
+                isPro && "cursor-default opacity-90"
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span
+                  className={cn(
+                    "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
+                    checked
+                      ? "border-[var(--rf-accent)] bg-[var(--rf-accent)] text-white"
+                      : "border-slate-300 bg-white"
+                  )}
+                  aria-hidden
+                >
+                  {checked ? <Check className="h-3.5 w-3.5" /> : null}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-semibold">{addon.name}</p>
+                    <p className="font-display text-lg font-semibold">
+                      {isPro ? (
+                        <span className="text-sm font-semibold text-[var(--rf-accent)]">
+                          w cenie
+                        </span>
+                      ) : isDiscounted ? (
+                        <span>
+                          <span className="mr-1.5 text-sm font-normal text-slate-400 line-through">
+                            {addon.price} zł
+                          </span>
+                          +{displayPrice} zł
+                        </span>
+                      ) : (
+                        <>+{displayPrice} zł</>
+                      )}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--rf-muted)]">
+                    {addon.description}
+                  </p>
+                  {isDiscounted ? (
+                    <p className="mt-2 text-xs font-semibold text-[var(--rf-accent)]">
+                      Promocja pakietu −50%
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {!isPro && pricing.bundlePromo ? (
+        <p className="rounded-lg bg-teal-50 px-3 py-2 text-sm text-teal-900">
+          Pakiet całościowy: STARTER + poddasze + elewacja. Drugi add-on za{" "}
+          {B2B_PRICES.addonBundleHalfPrice} zł zamiast {B2B_PRICES.facadeAddon}{" "}
+          zł (−50%). Razem{" "}
+          <strong>
+            {pricing.total.toLocaleString("pl-PL", {
+              minimumFractionDigits: pricing.total % 1 ? 1 : 0,
+            })}{" "}
+            zł / m-c
+          </strong>
+          .
+        </p>
+      ) : (
+        <p className="text-sm text-[var(--rf-muted)]">
+          Suma miesięczna po trialu:{" "}
+          <strong className="text-[var(--rf-ink)]">
+            {pricing.total.toLocaleString("pl-PL", {
+              minimumFractionDigits: pricing.total % 1 ? 1 : 0,
+            })}{" "}
+            zł
+          </strong>
+          {isPro
+            ? " (PRO ALL-IN-ONE)"
+            : value.insulation || value.facade
+              ? " (STARTER + wybrane add-ony)"
+              : " (sam STARTER — tylko dach)"}
+        </p>
+      )}
     </div>
   );
 }

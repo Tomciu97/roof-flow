@@ -12,6 +12,9 @@ export type DemoSession = {
   city?: string;
   postalCode?: string;
   serviceRadiusKm?: number;
+  /** Add-ony STARTER (w PRO zawsze true) */
+  insulationAddon?: boolean;
+  facadeAddon?: boolean;
   createdAt: string;
 };
 
