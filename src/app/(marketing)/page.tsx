@@ -201,7 +201,7 @@ export default function HomePage() {
           <div>
             <h3 className="font-display text-2xl font-semibold">Wykonawca (B2B SaaS)</h3>
             <p className="mt-2 text-sm text-[var(--rf-muted)]">
-              Subskrypcja miesięczna ze Stripe · 14 dni gratis · anulujesz kiedy chcesz
+              Subskrypcja Stripe · 14 dni gratis · miesięcznie albo rocznie z góry (−20% na każdy miesiąc)
             </p>
             <div className="mt-6">
               <B2BPlanCards ctaHref="/rejestracja-b2b" />

@@ -101,7 +101,7 @@ export default async function PlatnosciPage() {
       <section>
         <h2 className="font-display text-2xl font-semibold">Porównanie planów</h2>
         <p className="mt-1 text-sm text-[var(--rf-muted)]">
-          Dokładnie widać, co kupujesz — bez zgadywania z dwóch przycisków.
+          Dokładnie widać, co kupujesz. Rocznie z góry = −{B2B_PRICES.annualDiscountPercent}% na każdy miesiąc.
         </p>
         <div className="mt-6">
           <B2BPlanCards ctaHref="/rejestracja-b2b" />
