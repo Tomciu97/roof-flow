@@ -1,0 +1,272 @@
+import Link from "next/link";
+import { B2B_PRICES, B2C_PRICES, APP_NAME, APP_URL } from "@/lib/constants";
+import { Check, ArrowRight } from "lucide-react";
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: APP_NAME,
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Web",
+  inLanguage: "pl-PL",
+  url: APP_URL,
+  description:
+    "Interaktywny kalkulator budowy dachu, ocieplenia poddasza i elewacji. SaaS dla dekarzy oraz wycena PDF dla inwestorów.",
+  offers: [
+    {
+      "@type": "Offer",
+      name: "Wycena dachu B2C",
+      price: String(B2C_PRICES.roofOnly),
+      priceCurrency: "PLN",
+    },
+    {
+      "@type": "Offer",
+      name: "Plan STARTER B2B",
+      price: String(B2B_PRICES.starter),
+      priceCurrency: "PLN",
+      billingIncrement: "P1M",
+    },
+    {
+      "@type": "Offer",
+      name: "Plan PRO ALL-IN-ONE",
+      price: String(B2B_PRICES.pro),
+      priceCurrency: "PLN",
+      billingIncrement: "P1M",
+    },
+  ],
+};
+
+export default function HomePage() {
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      {/* HERO — pełna wysokość, brand first, jeden CTA cluster */}
+      <section className="relative min-h-[100svh] overflow-hidden rf-grain">
+        <div className="absolute inset-0 rf-hero-grid" aria-hidden />
+        <div
+          className="absolute inset-0 animate-pan"
+          aria-hidden
+          style={{
+            backgroundImage:
+              "linear-gradient(120deg, rgba(11,31,28,0.55), rgba(11,31,28,0.25)), url('https://images.unsplash.com/photo-1635424710928-0544e8512eae?auto=format&fit=crop&w=2400&q=80')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-6xl flex-col justify-end px-5 pb-16 pt-28 md:justify-center md:px-8 md:pb-24">
+          <p className="animate-rise font-display text-5xl font-semibold text-white md:text-7xl lg:text-8xl">
+            {APP_NAME}
+          </p>
+          <h1 className="animate-rise-delay mt-5 max-w-3xl text-2xl font-medium leading-snug text-white/95 md:text-4xl">
+            Interaktywny Kalkulator Budowy Dachu, Ocieplenia Poddasza i Elewacji
+          </h1>
+          <p className="animate-rise-delay-2 mt-4 max-w-xl text-base text-white/80 md:text-lg">
+            Od szybkiej wyceny PDF dla inwestora po whitelabel CRM dla firmy
+            dekarskiej — jeden silnik przeliczeń, zero ręcznego liczenia.
+          </p>
+          <div className="animate-rise-delay-2 mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href="/rejestracja-b2b"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-[var(--rf-accent)] px-6 py-3.5 text-sm font-semibold text-white transition hover:bg-[var(--rf-accent-hover)]"
+            >
+              Wypróbuj za darmo jako Wykonawca (14 Dni Gratis)
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/wycena-inwestor"
+              className="inline-flex items-center justify-center rounded-lg border border-white/40 bg-white/10 px-6 py-3.5 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
+            >
+              Szybka Wycena Inwestorska z Raportem PDF
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* B2B */}
+      <section id="funkcje" className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
+        <p className="text-sm font-semibold uppercase tracking-widest text-[var(--rf-accent)]">
+          Dla firm dekarskich
+        </p>
+        <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold md:text-5xl">
+          Odsiewaj przypadkowe zapytania. Zbieraj gotowe leady.
+        </h2>
+        <p className="mt-4 max-w-2xl text-[var(--rf-muted)]">
+          Widget na Twojej stronie, automatyczny CRM i stawki firmy — inwestor
+          liczy, Ty dostajesz kontakt z budżetem.
+        </p>
+        <ul className="mt-12 grid gap-8 md:grid-cols-3">
+          {[
+            {
+              t: "Odsiewanie zapytań",
+              d: "Klient podaje wymiary i materiały zanim do Ciebie napisze — mniej pustych telefonów.",
+            },
+            {
+              t: "Widget na własną WWW",
+              d: "Osadź iframe na WordPressie, Wixie lub HTML. Na PRO — własna domena przez Vercel.",
+            },
+            {
+              t: "Automatyczny CRM",
+              d: "Leady ze statusami, szacunkiem budżetu i załączonym projektem w jednym panelu.",
+            },
+          ].map((item) => (
+            <li key={item.t} className="border-t border-[var(--rf-border)] pt-6">
+              <h3 className="font-display text-xl font-semibold">{item.t}</h3>
+              <p className="mt-2 text-sm leading-relaxed text-[var(--rf-muted)]">
+                {item.d}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* B2C */}
+      <section
+        id="inwestorzy"
+        className="border-y border-[var(--rf-border)] bg-[var(--rf-sand)]/60"
+      >
+        <div className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[var(--rf-copper)]">
+            Dla inwestorów
+          </p>
+          <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold md:text-5xl">
+            Raport PDF z wykazem materiałów i widełkami kosztów
+          </h2>
+          <p className="mt-4 max-w-2xl text-[var(--rf-muted)]">
+            Bez konta: wymiary dachu, pokrycie, opcjonalnie poddasze i elewacja.
+            Po płatności — natychmiastowy PDF oraz kopia na e-mail.
+          </p>
+          <ul className="mt-10 grid gap-4 sm:grid-cols-2">
+            {[
+              "Koszt pokrycia i robocizny",
+              "Koszt drewna / więźby",
+              "Izolacja poddasza z zabudową",
+              "Ocieplenie elewacji netto",
+            ].map((t) => (
+              <li key={t} className="flex items-start gap-3 text-sm">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rf-accent)]" />
+                {t}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/wycena-inwestor"
+            className="mt-10 inline-flex items-center gap-2 font-semibold text-[var(--rf-accent)] hover:underline"
+          >
+            Rozpocznij wycenę
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
+
+      {/* CENNIK */}
+      <section id="cennik" className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
+        <h2 className="font-display text-3xl font-semibold md:text-5xl">Cennik</h2>
+        <p className="mt-3 text-[var(--rf-muted)]">
+          Przejrzyste ceny B2C (jednorazowo) oraz abonamenty B2B dla wykonawców.
+        </p>
+
+        <div className="mt-14 grid gap-12 lg:grid-cols-2">
+          <div>
+            <h3 className="font-display text-2xl font-semibold">Inwestor (B2C)</h3>
+            <div className="mt-6 space-y-4 border-t border-[var(--rf-border)] pt-6">
+              <PriceRow label="Wyliczanie samego dachu" price={`${B2C_PRICES.roofOnly} zł`} />
+              <PriceRow
+                label="Dodatek Poddasze / Izolacja"
+                price={`+${B2C_PRICES.insulationAddon} zł`}
+              />
+              <PriceRow
+                label="Dodatek Elewacja"
+                price={`+${B2C_PRICES.facadeAddon} zł`}
+              />
+              <PriceRow
+                label="Pakiet FULL BUNDLE"
+                price={`${B2C_PRICES.fullBundle} zł`}
+                highlight
+                note="Dach + Poddasze + Elewacja · Promocja"
+              />
+            </div>
+          </div>
+
+          <div>
+            <h3 className="font-display text-2xl font-semibold">Wykonawca (B2B SaaS)</h3>
+            <div className="mt-6 space-y-4 border-t border-[var(--rf-border)] pt-6">
+              <PriceRow
+                label="STARTER"
+                price={`${B2B_PRICES.starter} zł/m-c`}
+                note="Sam dach · do 30 leadów/m-c · subdomena"
+              />
+              <PriceRow
+                label="Add-on Poddasze"
+                price={`+${B2B_PRICES.insulationAddon} zł/m-c`}
+              />
+              <PriceRow
+                label="Add-on Elewacja"
+                price={`+${B2B_PRICES.facadeAddon} zł/m-c`}
+              />
+              <PriceRow
+                label="PRO ALL-IN-ONE"
+                price={`${B2B_PRICES.pro} zł/m-c`}
+                highlight
+                note="Wszystkie moduły · leady bez limitu · Custom Domain · Whitelabel · SMS"
+              />
+            </div>
+            <Link
+              href="/rejestracja-b2b"
+              className="mt-8 inline-flex rounded-lg bg-[var(--rf-ink)] px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Zacznij 14-dniowy trial
+            </Link>
+          </div>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function PriceRow({
+  label,
+  price,
+  note,
+  highlight,
+}: {
+  label: string;
+  price: string;
+  note?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={
+        highlight
+          ? "rounded-xl bg-[var(--rf-ink)] px-4 py-4 text-white"
+          : "flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between"
+      }
+    >
+      <div className={highlight ? "" : "flex flex-col"}>
+        <span className="font-medium">{label}</span>
+        {note ? (
+          <span
+            className={
+              highlight ? "mt-1 block text-sm text-white/70" : "text-xs text-[var(--rf-muted)]"
+            }
+          >
+            {note}
+          </span>
+        ) : null}
+      </div>
+      <span
+        className={
+          highlight
+            ? "mt-2 block font-display text-2xl font-semibold sm:mt-0"
+            : "font-display text-xl font-semibold"
+        }
+      >
+        {price}
+      </span>
+    </div>
+  );
+}

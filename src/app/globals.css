@@ -1,0 +1,119 @@
+@import "tailwindcss";
+
+:root {
+  --rf-bg: #f4f7f6;
+  --rf-ink: #0b1f1c;
+  --rf-muted: #5b6b68;
+  --rf-accent: #0f766e;
+  --rf-accent-hover: #0d9488;
+  --rf-copper: #c2410c;
+  --rf-sand: #e7efe9;
+  --rf-border: #d5e0dc;
+  --rf-glow: rgba(15, 118, 110, 0.18);
+  --background: var(--rf-bg);
+  --foreground: var(--rf-ink);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--rf-bg);
+  color: var(--rf-ink);
+  font-family: var(--font-body), system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display), Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+.rf-grain {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 20% -10%, rgba(15, 118, 110, 0.22), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 90% 10%, rgba(194, 65, 12, 0.12), transparent 50%),
+    linear-gradient(180deg, #eef5f2 0%, #f7faf8 45%, #eef3f1 100%);
+}
+
+.rf-hero-grid {
+  background-image:
+    linear-gradient(rgba(15, 118, 110, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, black 30%, transparent 95%);
+}
+
+@keyframes rf-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes rf-pan {
+  from {
+    transform: scale(1.08) translate3d(0, 0, 0);
+  }
+  to {
+    transform: scale(1) translate3d(0, -1.5%, 0);
+  }
+}
+
+@keyframes rf-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: rf-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-rise-delay {
+  animation: rf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+}
+
+.animate-rise-delay-2 {
+  animation: rf-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.28s both;
+}
+
+.animate-pan {
+  animation: rf-pan 12s ease-out both;
+}
+
+.animate-fade {
+  animation: rf-fade 1s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-rise-delay,
+  .animate-rise-delay-2,
+  .animate-pan,
+  .animate-fade {
+    animation: none;
+  }
+}
