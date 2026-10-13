@@ -20,6 +20,8 @@ export function RegisterForm() {
   const [phone, setPhone] = useState("+48 500 100 200");
   const [email, setEmail] = useState("demo@roofflow.pl");
   const [password, setPassword] = useState("demo1234");
+  const [city, setCity] = useState("Kraków");
+  const [postalCode, setPostalCode] = useState("30-001");
   const [plan, setPlan] = useState<B2BPlanId>(initialPlan);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,6 +39,8 @@ export function RegisterForm() {
           company,
           phone,
           email,
+          city,
+          postalCode,
           plan,
           checkout: true,
         }),
@@ -128,6 +132,30 @@ export function RegisterForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+          </div>
+          <div>
+            <Label htmlFor="city">Miasto siedziby</Label>
+            <Input
+              id="city"
+              required
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="np. Kraków"
+            />
+          </div>
+          <div>
+            <Label htmlFor="postal">Kod pocztowy</Label>
+            <Input
+              id="postal"
+              required
+              value={postalCode}
+              onChange={(e) => setPostalCode(e.target.value)}
+              placeholder="30-001"
+              inputMode="numeric"
+            />
+            <p className="mt-1 text-xs text-slate-500">
+              Potrzebne do dopasowania klientów z okolicy (marketplace).
+            </p>
           </div>
           <div className="sm:col-span-2">
             <Label htmlFor="password">Hasło (demo — dowolne)</Label>

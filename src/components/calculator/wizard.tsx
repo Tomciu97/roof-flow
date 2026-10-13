@@ -11,6 +11,7 @@ import {
   resolveB2CAmount,
 } from "@/lib/calculator";
 import { DEFAULT_WIZARD_STATE } from "@/lib/constants";
+import { formatPostal, isValidPostal } from "@/lib/location";
 import type {
   CoveringStandard,
   FacadeMaterial,
@@ -43,7 +44,7 @@ const STEPS_B2C = [
   "Pokrycie",
   "Poddasze",
   "Elewacja",
-  "Płatność",
+  "Lokalizacja i płatność",
 ];
 
 const STEPS_TENANT = [
@@ -66,7 +67,8 @@ export function CalculatorWizard({
     name: "",
     phone: "",
     email: "",
-    location: "",
+    city: "",
+    postalCode: "",
     schedule: "",
   });
   const [file, setFile] = useState<File | null>(null);
@@ -100,13 +102,41 @@ export function CalculatorWizard({
   }
 
   async function payB2C() {
-    setLoading(true);
     setError(null);
+    if (!state.clientName.trim()) {
+      setError("Podaj imię i nazwisko.");
+      return;
+    }
+    if (!state.clientPhone.trim()) {
+      setError("Podaj numer telefonu.");
+      return;
+    }
+    if (!state.email.trim()) {
+      setError("Podaj adres e-mail.");
+      return;
+    }
+    if (!state.city.trim()) {
+      setError("Podaj miasto — dopasujemy firmy z okolicy.");
+      return;
+    }
+    if (!isValidPostal(formatPostal(state.postalCode))) {
+      setError("Podaj poprawny kod pocztowy (np. 30-001).");
+      return;
+    }
+
+    setLoading(true);
     try {
+      const payload = {
+        state: {
+          ...state,
+          postalCode: formatPostal(state.postalCode),
+        },
+        result,
+      };
       const res = await fetch("/api/checkout/b2c", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state, result }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Błąd płatności");
@@ -142,7 +172,9 @@ export function CalculatorWizard({
           clientName: lead.name,
           clientPhone: lead.phone,
           clientEmail: lead.email || undefined,
-          location: lead.location,
+          location: [lead.postalCode, lead.city].filter(Boolean).join(" "),
+          city: lead.city,
+          postalCode: lead.postalCode,
           schedule: lead.schedule,
           state,
           result,
@@ -283,11 +315,13 @@ export function CalculatorWizard({
         {mode === "b2c" && step === steps.length - 1 ? (
           <Button
             type="button"
-            disabled={loading || !state.email}
+            disabled={loading}
             onClick={payB2C}
             style={{ background: brandColor }}
           >
-            {loading ? "Przekierowanie…" : "Zapłać i Pobierz Raport PDF"}
+            {loading
+              ? "Przekierowanie…"
+              : "Zapłać — raport PDF + oferty firm"}
           </Button>
         ) : mode === "tenant" && step === steps.length - 1 ? (
           <Button
@@ -535,29 +569,89 @@ function PaywallStep({
     <div className="space-y-5">
       <PreviewAreas result={result} />
       <div className="rounded-xl border border-[var(--rf-border)] bg-[var(--rf-sand)]/70 px-4 py-4">
-        <p className="text-sm text-[var(--rf-muted)]">Do zapłaty za raport PDF</p>
+        <p className="text-sm text-[var(--rf-muted)]">
+          Szacowany zakres inwestycji
+        </p>
+        <p className="font-display text-2xl font-semibold md:text-3xl">
+          {formatPln(result.priceMin)} – {formatPln(result.priceMax)}
+        </p>
+        <p className="mt-3 text-sm text-[var(--rf-muted)]">Opłata za dostęp</p>
         <p className="font-display text-3xl font-semibold">{amount} zł</p>
         <p className="mt-1 text-xs text-[var(--rf-muted)]">
           {state.insulationEnabled && state.facadeEnabled
-            ? "Pakiet FULL BUNDLE (promocja) — dach + poddasze + elewacja"
+            ? "Pakiet FULL BUNDLE — dach + poddasze + elewacja"
             : state.insulationEnabled || state.facadeEnabled
               ? "Dach + wybrany dodatek"
               : "Sam dach"}
         </p>
-        <p className="mt-3 text-xs text-slate-600">
-          Płatność przez Stripe Checkout. Bez kluczy Stripe przejdziesz ścieżką
-          demonstracyjną i nadal pobierzesz PDF.
+        <ul className="mt-3 space-y-1 text-xs text-slate-700">
+          <li>✓ Raport PDF z widełkami kosztów</li>
+          <li>✓ Dopasowanie firm dekarskich z Twojej okolicy</li>
+          <li>✓ Firmy mogą zaproponować swoją cenę (konkurs ofert)</li>
+        </ul>
+      </div>
+
+      <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-teal-950">
+        <p className="font-semibold">Po co kod pocztowy i miasto?</p>
+        <p className="mt-1 text-teal-900/80">
+          Dzięki temu pokażemy Twoje zapytanie tylko firmom z okolicy. One mogą
+          zaproponować niższą cenę materiałów lub robocizny — Ty wybierasz, kogo
+          zaprosisz do współpracy.
         </p>
       </div>
-      <Field label="E-mail odbiorcy raportu">
-        <Input
-          type="email"
-          required
-          placeholder="jan@example.pl"
-          value={state.email}
-          onChange={(e) => patch({ email: e.target.value })}
-        />
-      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Imię i nazwisko">
+          <Input
+            required
+            value={state.clientName}
+            onChange={(e) => patch({ clientName: e.target.value })}
+            placeholder="Jan Kowalski"
+          />
+        </Field>
+        <Field label="Telefon">
+          <Input
+            type="tel"
+            required
+            value={state.clientPhone}
+            onChange={(e) => patch({ clientPhone: e.target.value })}
+            placeholder="+48 600 000 000"
+          />
+        </Field>
+        <Field label="E-mail (raport PDF)">
+          <Input
+            type="email"
+            required
+            placeholder="jan@example.pl"
+            value={state.email}
+            onChange={(e) => patch({ email: e.target.value })}
+          />
+        </Field>
+        <Field label="Planowany termin prac">
+          <Input
+            value={state.schedule}
+            onChange={(e) => patch({ schedule: e.target.value })}
+            placeholder="np. wiosna 2027"
+          />
+        </Field>
+        <Field label="Miasto">
+          <Input
+            required
+            value={state.city}
+            onChange={(e) => patch({ city: e.target.value })}
+            placeholder="np. Kraków"
+          />
+        </Field>
+        <Field label="Kod pocztowy">
+          <Input
+            required
+            value={state.postalCode}
+            onChange={(e) => patch({ postalCode: formatPostal(e.target.value) })}
+            placeholder="30-001"
+            maxLength={6}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -572,7 +666,8 @@ function LeadGate({
     name: string;
     phone: string;
     email: string;
-    location: string;
+    city: string;
+    postalCode: string;
     schedule: string;
   };
   setLead: (v: typeof lead) => void;
@@ -587,6 +682,10 @@ function LeadGate({
         <strong>
           {formatPln(result.priceMin)} – {formatPln(result.priceMax)}
         </strong>
+      </p>
+      <p className="rounded-lg bg-teal-50 px-3 py-2 text-xs text-teal-900">
+        Ta wycena jest bezpłatna — firmę opłaca abonament RoofFlow. Podaj lokalizację,
+        żeby wykonawca wiedział, gdzie ma jechać na pomiar.
       </p>
       <Field label="Imię i nazwisko">
         <Input
@@ -610,12 +709,26 @@ function LeadGate({
           onChange={(e) => setLead({ ...lead, email: e.target.value })}
         />
       </Field>
-      <Field label="Miejscowość">
-        <Input
-          value={lead.location}
-          onChange={(e) => setLead({ ...lead, location: e.target.value })}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Miasto">
+          <Input
+            value={lead.city}
+            onChange={(e) => setLead({ ...lead, city: e.target.value })}
+            required
+            placeholder="np. Kraków"
+          />
+        </Field>
+        <Field label="Kod pocztowy">
+          <Input
+            value={lead.postalCode}
+            onChange={(e) =>
+              setLead({ ...lead, postalCode: formatPostal(e.target.value) })
+            }
+            placeholder="30-001"
+            maxLength={6}
+          />
+        </Field>
+      </div>
       <Field label="Planowany termin budowy">
         <Input
           value={lead.schedule}

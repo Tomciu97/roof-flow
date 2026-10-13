@@ -99,3 +99,63 @@ export async function sendLeadReceiptEmail(opts: {
     `,
   });
 }
+
+export async function sendOfferToClientEmail(opts: {
+  to: string;
+  tenantName: string;
+  tenantPhone?: string | null;
+  priceOffered: number;
+  message?: string;
+  offersUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return { skipped: true as const };
+
+  return resend.emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `Nowa oferta od ${opts.tenantName} — RoofFlow`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
+        <h1 style="font-size:20px">Firma złożyła ofertę na Twoją wycenę</h1>
+        <p><strong>${opts.tenantName}</strong> proponuje: <strong>${Math.round(opts.priceOffered).toLocaleString("pl-PL")} zł</strong></p>
+        ${opts.tenantPhone ? `<p>Telefon: ${opts.tenantPhone}</p>` : ""}
+        ${opts.message ? `<p>${opts.message}</p>` : ""}
+        <p><a href="${opts.offersUrl}">Zobacz oferty i wybierz firmę</a></p>
+      </div>
+    `,
+  });
+}
+
+/** Powiadomienie firmy: nowy klient marketplace w okolicy */
+export async function sendNewMarketplaceClientEmail(opts: {
+  to: string;
+  companyName: string;
+  clientCity: string;
+  clientPostal: string;
+  schedule?: string;
+  priceMin: number;
+  priceMax: number;
+  dashboardUrl: string;
+}) {
+  const resend = getResend();
+  if (!resend) return { skipped: true as const };
+
+  return resend.emails.send({
+    from: FROM,
+    to: opts.to,
+    subject: `Nowy klient w okolicy (${opts.clientPostal} ${opts.clientCity})`,
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
+        <h1 style="font-size:20px">Pojawił się nowy klient w Twojej okolicy</h1>
+        <p>Cześć <strong>${opts.companyName}</strong> — inwestor kupił wycenę RoofFlow i szuka wykonawcy.</p>
+        <ul>
+          <li>Lokalizacja: ${opts.clientPostal} ${opts.clientCity}</li>
+          ${opts.schedule ? `<li>Termin: ${opts.schedule}</li>` : ""}
+          <li>Widełki z raportu: ${Math.round(opts.priceMin).toLocaleString("pl-PL")} – ${Math.round(opts.priceMax).toLocaleString("pl-PL")} zł</li>
+        </ul>
+        <p><a href="${opts.dashboardUrl}">Zobacz zapytanie i zaproponuj cenę</a></p>
+      </div>
+    `,
+  });
+}

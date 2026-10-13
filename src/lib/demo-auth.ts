@@ -9,6 +9,9 @@ export type DemoSession = {
   email: string;
   plan: "starter" | "pro";
   phone?: string;
+  city?: string;
+  postalCode?: string;
+  serviceRadiusKm?: number;
   createdAt: string;
 };
 

@@ -75,22 +75,25 @@ export const B2C_PACKAGES = [
     id: "roof",
     name: "Sam dach",
     price: B2C_PRICES.roofOnly,
-    description: "Geometria, pokrycie, drewno, robocizna — raport PDF.",
-    includes: ["Dach"],
+    description:
+      "Raport PDF + dostęp do konkursu ofert firm z Twojej okolicy.",
+    includes: ["Dach", "Dopasowanie firm", "Oferty i wybór wykonawcy"],
   },
   {
     id: "roof_ins",
     name: "Dach + poddasze",
     price: B2C_PRICES.roofInsulation,
-    description: "Dach oraz izolacja poddasza z materiałem i grubością.",
-    includes: ["Dach", "Poddasze"],
+    description:
+      "Dach i izolacja poddasza — plus firmy, które mogą to wykonać.",
+    includes: ["Dach", "Poddasze", "Oferty lokalnych firm"],
   },
   {
     id: "bundle",
     name: "FULL BUNDLE",
     price: B2C_PRICES.fullBundle,
-    description: "Dach + poddasze + elewacja w promocyjnej cenie.",
-    includes: ["Dach", "Poddasze", "Elewacja"],
+    description:
+      "Dach + poddasze + elewacja i marketplace wykonawców w regionie.",
+    includes: ["Dach", "Poddasze", "Elewacja", "Konkurs ofert"],
     promo: true,
   },
 ] as const;

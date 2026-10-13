@@ -90,7 +90,12 @@ export const DEFAULT_WIZARD_STATE: WizardState = {
   facadeEnabled: false,
   facadeMaterial: "styrofoam",
   storeyHeightM: 2.8,
+  clientName: "",
+  clientPhone: "",
   email: "",
+  city: "",
+  postalCode: "",
+  schedule: "",
 };
 
 export const STRIPE_PRICE_ENV = {

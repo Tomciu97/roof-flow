@@ -16,7 +16,10 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function enterDemo(company = "Demo Dekarz Marian") {
+  async function enterDemo(
+    company = "Demo Dekarz Marian",
+    opts?: { city?: string; postalCode?: string; plan?: "starter" | "pro" }
+  ) {
     setLoading(true);
     setError(null);
     try {
@@ -27,6 +30,10 @@ export function LoginForm() {
           action: "login",
           email,
           company,
+          city: opts?.city || "Kraków",
+          postalCode: opts?.postalCode || "30-001",
+          plan: opts?.plan || "starter",
+          phone: "+48 500 100 200",
         }),
       });
       const data = await res.json();
@@ -85,7 +92,13 @@ export function LoginForm() {
         variant="outline"
         className="w-full"
         disabled={loading}
-        onClick={() => enterDemo("Firma PRO Demo")}
+        onClick={() =>
+          enterDemo("Firma PRO Demo", {
+            city: "Kraków",
+            postalCode: "30-001",
+            plan: "pro",
+          })
+        }
       >
         Szybkie wejście jednym kliknięciem
       </Button>

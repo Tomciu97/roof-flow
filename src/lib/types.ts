@@ -88,6 +88,9 @@ export interface Tenant {
   logo_url: string | null;
   brand_color: string;
   phone: string | null;
+  city: string | null;
+  postal_code: string | null;
+  service_radius_km: number;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   subscription_status: SubscriptionStatus;
@@ -134,10 +137,16 @@ export interface B2COrder {
   id: string;
   stripe_session_id: string;
   client_email: string;
+  client_name?: string | null;
+  client_phone?: string | null;
+  client_city?: string | null;
+  client_postal_code?: string | null;
+  client_schedule?: string | null;
   calculation_data: Record<string, unknown>;
   amount_paid: number;
   status: "pending" | "paid" | "failed";
   pdf_url: string | null;
+  marketplace_request_id?: string | null;
   created_at: string;
 }
 
@@ -156,5 +165,11 @@ export interface WizardState {
   facadeEnabled: boolean;
   facadeMaterial: FacadeMaterial;
   storeyHeightM: number;
+  /** Dane klienta B2C (marketplace) */
+  clientName: string;
+  clientPhone: string;
   email: string;
+  city: string;
+  postalCode: string;
+  schedule: string;
 }

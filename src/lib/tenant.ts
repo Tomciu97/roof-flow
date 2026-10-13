@@ -4,6 +4,7 @@ import {
   DEMO_COOKIE,
   decodeDemoSession,
   isSupabaseConfigured,
+  type DemoSession,
 } from "@/lib/demo-auth";
 import type { PricingConfig, Tenant } from "@/lib/types";
 
@@ -70,22 +71,19 @@ export async function getCurrentTenant(): Promise<{
   }
 }
 
-function tenantFromDemo(demo: {
-  company: string;
-  slug: string;
-  plan: "starter" | "pro";
-  phone?: string;
-  createdAt: string;
-}): Tenant {
+function tenantFromDemo(demo: DemoSession): Tenant {
   const isPro = demo.plan === "pro";
   return {
-    id: "demo",
+    id: `demo-${demo.slug}`,
     user_id: "demo",
     name: demo.company,
     slug: demo.slug,
     logo_url: null,
     brand_color: "#0f766e",
     phone: demo.phone || "+48 500 100 200",
+    city: demo.city || "Kraków",
+    postal_code: demo.postalCode || "30-001",
+    service_radius_km: demo.serviceRadiusKm ?? 50,
     stripe_customer_id: null,
     stripe_subscription_id: null,
     subscription_status: "trialing",
@@ -99,13 +97,16 @@ function tenantFromDemo(demo: {
 
 export function demoTenant(): Tenant {
   return {
-    id: "demo",
+    id: "demo-dekarz-marian",
     user_id: "demo",
     name: "Demo Dekarz Marian",
     slug: "dekarz-marian",
     logo_url: null,
     brand_color: "#0f766e",
     phone: "+48 500 100 200",
+    city: "Kraków",
+    postal_code: "30-001",
+    service_radius_km: 50,
     stripe_customer_id: null,
     stripe_subscription_id: null,
     subscription_status: "trialing",

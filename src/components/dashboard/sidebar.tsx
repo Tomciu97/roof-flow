@@ -7,6 +7,7 @@ import {
   Tags,
   Puzzle,
   CreditCard,
+  MapPin,
   LogOut,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
 
 const links = [
   { href: "/dashboard", label: "Leady", icon: LayoutDashboard },
+  { href: "/dashboard/oferty", label: "Oferty okolicy", icon: MapPin },
   { href: "/dashboard/cennik", label: "Cennik", icon: Tags },
   { href: "/dashboard/widget", label: "Widget", icon: Puzzle },
   { href: "/dashboard/platnosci", label: "Płatności", icon: CreditCard },

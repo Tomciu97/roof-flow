@@ -103,7 +103,7 @@ export default function HomePage() {
           Widget na Twojej stronie, automatyczny CRM i stawki firmy — inwestor
           liczy, Ty dostajesz kontakt z budżetem.
         </p>
-        <ul className="mt-12 grid gap-8 md:grid-cols-3">
+        <ul className="mt-12 grid gap-8 sm:grid-cols-2">
           {[
             {
               t: "Odsiewanie zapytań",
@@ -116,6 +116,10 @@ export default function HomePage() {
             {
               t: "Automatyczny CRM",
               d: "Leady ze statusami, szacunkiem budżetu i załączonym projektem w jednym panelu.",
+            },
+            {
+              t: "Klienci z okolicy",
+              d: "Po zakupie wyceny B2C widzisz inwestorów w Twoim regionie i składasz własną ofertę cenową.",
             },
           ].map((item) => (
             <li key={item.t} className="border-t border-[var(--rf-border)] pt-6">
@@ -138,18 +142,19 @@ export default function HomePage() {
             Dla inwestorów
           </p>
           <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold md:text-5xl">
-            Raport PDF z wykazem materiałów i widełkami kosztów
+            Wycena PDF i konkurs ofert firm z okolicy
           </h2>
           <p className="mt-4 max-w-2xl text-[var(--rf-muted)]">
-            Bez konta: wymiary dachu, pokrycie, opcjonalnie poddasze i elewacja.
-            Po płatności — natychmiastowy PDF oraz kopia na e-mail.
+            Podajesz miasto i kod pocztowy, płacisz za raport — a lokalne firmy
+            mogą zaproponować własną cenę materiałów i robocizny. Na stronie
+            wykonawcy wycena z widgetu jest darmowa (płaci firma).
           </p>
           <ul className="mt-10 grid gap-4 sm:grid-cols-2">
             {[
-              "Koszt pokrycia i robocizny",
-              "Koszt drewna / więźby",
-              "Izolacja poddasza z zabudową",
-              "Ocieplenie elewacji netto",
+              "Raport PDF z widełkami kosztów",
+              "Dopasowanie firm po kodzie pocztowym",
+              "Oferty: niższa cena, inne materiały, termin",
+              "Akceptujesz lub odrzucasz wykonawcę",
             ].map((t) => (
               <li key={t} className="flex items-start gap-3 text-sm">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rf-accent)]" />
@@ -179,7 +184,7 @@ export default function HomePage() {
           <div>
             <h3 className="font-display text-2xl font-semibold">Inwestor (B2C)</h3>
             <p className="mt-2 text-sm text-[var(--rf-muted)]">
-              Jednorazowa płatność Stripe · raport PDF na e-mail
+              Jednorazowa płatność Stripe · raport PDF + konkurs ofert lokalnych firm
             </p>
             <div className="mt-6">
               <B2CPackageCards />
