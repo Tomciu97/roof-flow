@@ -14,7 +14,7 @@ export const instant = false;
 export default function WycenaInwestorPage() {
   return (
     <div className="min-h-screen rf-grain">
-      <div className="mx-auto max-w-3xl px-5 py-10 md:px-8 md:py-14">
+      <div className="mx-auto max-w-5xl px-5 py-10 md:px-8 md:py-14">
         <Link
           href="/"
           className="font-display text-xl font-semibold text-[var(--rf-ink)]"

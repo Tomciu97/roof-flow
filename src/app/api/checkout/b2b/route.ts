@@ -14,10 +14,15 @@ export async function POST(request: Request) {
 
     const plan = body.plan || "starter";
 
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (
+      !process.env.STRIPE_SECRET_KEY ||
+      !process.env.STRIPE_SECRET_KEY.startsWith("sk_")
+    ) {
       return NextResponse.json({
-        url: `${APP_URL}/dashboard`,
+        url: `${APP_URL}/dashboard?plan=${plan}&trial=1`,
         demo: true,
+        message:
+          "Stripe nie jest skonfigurowany. Ustaw STRIPE_SECRET_KEY oraz Price ID (STRIPE_PRICE_B2B_*), aby uruchomić Checkout z trialem 14 dni.",
       });
     }
 

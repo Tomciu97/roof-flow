@@ -10,7 +10,6 @@ import {
   LogOut,
 } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const links = [
@@ -20,14 +19,31 @@ const links = [
   { href: "/dashboard/platnosci", label: "Płatności", icon: CreditCard },
 ];
 
-export function DashboardSidebar({ company }: { company: string }) {
+export function DashboardSidebar({
+  company,
+  isDemo,
+}: {
+  company: string;
+  isDemo?: boolean;
+}) {
   const pathname = usePathname();
   const router = useRouter();
 
   async function logout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch("/api/demo-auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "logout" }),
+    });
+    try {
+      const { createClient } = await import("@/lib/supabase/client");
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      /* brak Supabase */
+    }
     router.push("/login");
+    router.refresh();
   }
 
   return (
@@ -37,6 +53,11 @@ export function DashboardSidebar({ company }: { company: string }) {
           {APP_NAME}
         </Link>
         <p className="mt-1 truncate text-xs text-white/60">{company}</p>
+        {isDemo ? (
+          <span className="mt-2 inline-block rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+            Tryb demo
+          </span>
+        ) : null}
       </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-1 md:flex-col md:overflow-visible">
         {links.map(({ href, label, icon: Icon }) => {

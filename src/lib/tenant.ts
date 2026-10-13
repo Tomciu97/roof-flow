@@ -1,11 +1,38 @@
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import {
+  DEMO_COOKIE,
+  decodeDemoSession,
+  isSupabaseConfigured,
+} from "@/lib/demo-auth";
 import type { PricingConfig, Tenant } from "@/lib/types";
 
 export async function getCurrentTenant(): Promise<{
   tenant: Tenant | null;
   pricing: PricingConfig | null;
   userId: string | null;
+  isDemo: boolean;
 }> {
+  // Najpierw sesja demonstracyjna (do klikania bez Supabase)
+  try {
+    const cookieStore = await cookies();
+    const demo = decodeDemoSession(cookieStore.get(DEMO_COOKIE)?.value);
+    if (demo) {
+      return {
+        tenant: tenantFromDemo(demo),
+        pricing: null,
+        userId: "demo",
+        isDemo: true,
+      };
+    }
+  } catch {
+    /* cookies() może być niedostępne w niektórych kontekstach */
+  }
+
+  if (!isSupabaseConfigured()) {
+    return { tenant: null, pricing: null, userId: null, isDemo: false };
+  }
+
   try {
     const supabase = await createClient();
     const {
@@ -13,7 +40,7 @@ export async function getCurrentTenant(): Promise<{
     } = await supabase.auth.getUser();
 
     if (!user) {
-      return { tenant: null, pricing: null, userId: null };
+      return { tenant: null, pricing: null, userId: null, isDemo: false };
     }
 
     const { data: tenant } = await supabase
@@ -23,7 +50,7 @@ export async function getCurrentTenant(): Promise<{
       .maybeSingle();
 
     if (!tenant) {
-      return { tenant: null, pricing: null, userId: user.id };
+      return { tenant: null, pricing: null, userId: user.id, isDemo: false };
     }
 
     const { data: pricing } = await supabase
@@ -36,10 +63,38 @@ export async function getCurrentTenant(): Promise<{
       tenant: tenant as Tenant,
       pricing: (pricing as PricingConfig) || null,
       userId: user.id,
+      isDemo: false,
     };
   } catch {
-    return { tenant: null, pricing: null, userId: null };
+    return { tenant: null, pricing: null, userId: null, isDemo: false };
   }
+}
+
+function tenantFromDemo(demo: {
+  company: string;
+  slug: string;
+  plan: "starter" | "pro";
+  phone?: string;
+  createdAt: string;
+}): Tenant {
+  const isPro = demo.plan === "pro";
+  return {
+    id: "demo",
+    user_id: "demo",
+    name: demo.company,
+    slug: demo.slug,
+    logo_url: null,
+    brand_color: "#0f766e",
+    phone: demo.phone || "+48 500 100 200",
+    stripe_customer_id: null,
+    stripe_subscription_id: null,
+    subscription_status: "trialing",
+    plan_tier: demo.plan,
+    has_insulation_addon: isPro,
+    has_facade_addon: isPro,
+    custom_domain: null,
+    created_at: demo.createdAt,
+  };
 }
 
 export function demoTenant(): Tenant {
