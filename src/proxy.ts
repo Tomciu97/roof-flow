@@ -41,13 +41,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Ochrona dashboardu — tylko gdy Supabase jest skonfigurowane
-  if (
-    pathname.startsWith("/dashboard") &&
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    const hasSession = request.cookies
+  // Ochrona dashboardu — sesja demo LUB Supabase
+  if (pathname.startsWith("/dashboard")) {
+    const hasDemo = request.cookies.has("rf_demo_session");
+    const hasSupabaseSession = request.cookies
       .getAll()
       .some(
         (c) =>
@@ -55,7 +52,15 @@ export async function proxy(request: NextRequest) {
           c.name.startsWith("sb-") ||
           c.name.includes("supabase")
       );
-    if (!hasSession) {
+    const supabaseConfigured = Boolean(
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("xxxx")
+    );
+
+    // Bez żadnej sesji: w trybie demo (bez Supabase) wpuszczamy;
+    // ze skonfigurowanym Supabase wymagamy logowania.
+    if (supabaseConfigured && !hasDemo && !hasSupabaseSession) {
       const login = new URL("/login", request.url);
       login.searchParams.set("next", pathname);
       return NextResponse.redirect(login);

@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { B2B_PRICES, B2C_PRICES, APP_NAME, APP_URL } from "@/lib/constants";
 import { Check, ArrowRight } from "lucide-react";
+import {
+  B2BAddonsList,
+  B2BPlanCards,
+  B2CPackageCards,
+} from "@/components/marketing/plan-cards";
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -98,7 +103,7 @@ export default function HomePage() {
           Widget na Twojej stronie, automatyczny CRM i stawki firmy — inwestor
           liczy, Ty dostajesz kontakt z budżetem.
         </p>
-        <ul className="mt-12 grid gap-8 md:grid-cols-3">
+        <ul className="mt-12 grid gap-8 sm:grid-cols-2">
           {[
             {
               t: "Odsiewanie zapytań",
@@ -111,6 +116,10 @@ export default function HomePage() {
             {
               t: "Automatyczny CRM",
               d: "Leady ze statusami, szacunkiem budżetu i załączonym projektem w jednym panelu.",
+            },
+            {
+              t: "Klienci z okolicy",
+              d: "Po zakupie wyceny B2C widzisz inwestorów w Twoim regionie i składasz własną ofertę cenową.",
             },
           ].map((item) => (
             <li key={item.t} className="border-t border-[var(--rf-border)] pt-6">
@@ -133,18 +142,19 @@ export default function HomePage() {
             Dla inwestorów
           </p>
           <h2 className="mt-3 max-w-2xl font-display text-3xl font-semibold md:text-5xl">
-            Raport PDF z wykazem materiałów i widełkami kosztów
+            Wycena PDF i konkurs ofert firm z okolicy
           </h2>
           <p className="mt-4 max-w-2xl text-[var(--rf-muted)]">
-            Bez konta: wymiary dachu, pokrycie, opcjonalnie poddasze i elewacja.
-            Po płatności — natychmiastowy PDF oraz kopia na e-mail.
+            Podajesz miasto i kod pocztowy, płacisz za raport — a lokalne firmy
+            mogą zaproponować własną cenę materiałów i robocizny. Na stronie
+            wykonawcy wycena z widgetu jest darmowa (płaci firma).
           </p>
           <ul className="mt-10 grid gap-4 sm:grid-cols-2">
             {[
-              "Koszt pokrycia i robocizny",
-              "Koszt drewna / więźby",
-              "Izolacja poddasza z zabudową",
-              "Ocieplenie elewacji netto",
+              "Raport PDF z widełkami kosztów",
+              "Dopasowanie firm po kodzie pocztowym",
+              "Oferty: niższa cena, inne materiały, termin",
+              "Akceptujesz lub odrzucasz wykonawcę",
             ].map((t) => (
               <li key={t} className="flex items-start gap-3 text-sm">
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rf-accent)]" />
@@ -165,108 +175,41 @@ export default function HomePage() {
       {/* CENNIK */}
       <section id="cennik" className="mx-auto max-w-6xl px-5 py-20 md:px-8 md:py-28">
         <h2 className="font-display text-3xl font-semibold md:text-5xl">Cennik</h2>
-        <p className="mt-3 text-[var(--rf-muted)]">
-          Przejrzyste ceny B2C (jednorazowo) oraz abonamenty B2B dla wykonawców.
+        <p className="mt-3 max-w-2xl text-[var(--rf-muted)]">
+          Jasno widać, co dostajesz — zarówno przy jednorazowym raporcie PDF, jak i przy
+          abonamencie dla firmy dekarskiej.
         </p>
 
-        <div className="mt-14 grid gap-12 lg:grid-cols-2">
+        <div className="mt-14 space-y-16">
           <div>
             <h3 className="font-display text-2xl font-semibold">Inwestor (B2C)</h3>
-            <div className="mt-6 space-y-4 border-t border-[var(--rf-border)] pt-6">
-              <PriceRow label="Wyliczanie samego dachu" price={`${B2C_PRICES.roofOnly} zł`} />
-              <PriceRow
-                label="Dodatek Poddasze / Izolacja"
-                price={`+${B2C_PRICES.insulationAddon} zł`}
-              />
-              <PriceRow
-                label="Dodatek Elewacja"
-                price={`+${B2C_PRICES.facadeAddon} zł`}
-              />
-              <PriceRow
-                label="Pakiet FULL BUNDLE"
-                price={`${B2C_PRICES.fullBundle} zł`}
-                highlight
-                note="Dach + Poddasze + Elewacja · Promocja"
-              />
+            <p className="mt-2 text-sm text-[var(--rf-muted)]">
+              Jednorazowa płatność Stripe · raport PDF + konkurs ofert lokalnych firm
+            </p>
+            <div className="mt-6">
+              <B2CPackageCards />
             </div>
+            <Link
+              href="/wycena-inwestor"
+              className="mt-6 inline-flex items-center gap-2 font-semibold text-[var(--rf-accent)] hover:underline"
+            >
+              Przejdź do wyceny inwestorskiej
+              <ArrowRight className="h-4 w-4" />
+            </Link>
           </div>
 
           <div>
             <h3 className="font-display text-2xl font-semibold">Wykonawca (B2B SaaS)</h3>
-            <div className="mt-6 space-y-4 border-t border-[var(--rf-border)] pt-6">
-              <PriceRow
-                label="STARTER"
-                price={`${B2B_PRICES.starter} zł/m-c`}
-                note="Sam dach · do 30 leadów/m-c · subdomena"
-              />
-              <PriceRow
-                label="Add-on Poddasze"
-                price={`+${B2B_PRICES.insulationAddon} zł/m-c`}
-              />
-              <PriceRow
-                label="Add-on Elewacja"
-                price={`+${B2B_PRICES.facadeAddon} zł/m-c`}
-              />
-              <PriceRow
-                label="PRO ALL-IN-ONE"
-                price={`${B2B_PRICES.pro} zł/m-c`}
-                highlight
-                note="Wszystkie moduły · leady bez limitu · Custom Domain · Whitelabel · SMS"
-              />
+            <p className="mt-2 text-sm text-[var(--rf-muted)]">
+              Subskrypcja miesięczna ze Stripe · 14 dni gratis · anulujesz kiedy chcesz
+            </p>
+            <div className="mt-6">
+              <B2BPlanCards ctaHref="/rejestracja-b2b" />
             </div>
-            <Link
-              href="/rejestracja-b2b"
-              className="mt-8 inline-flex rounded-lg bg-[var(--rf-ink)] px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800"
-            >
-              Zacznij 14-dniowy trial
-            </Link>
+            <B2BAddonsList />
           </div>
         </div>
       </section>
     </>
-  );
-}
-
-function PriceRow({
-  label,
-  price,
-  note,
-  highlight,
-}: {
-  label: string;
-  price: string;
-  note?: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={
-        highlight
-          ? "rounded-xl bg-[var(--rf-ink)] px-4 py-4 text-white"
-          : "flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between"
-      }
-    >
-      <div className={highlight ? "" : "flex flex-col"}>
-        <span className="font-medium">{label}</span>
-        {note ? (
-          <span
-            className={
-              highlight ? "mt-1 block text-sm text-white/70" : "text-xs text-[var(--rf-muted)]"
-            }
-          >
-            {note}
-          </span>
-        ) : null}
-      </div>
-      <span
-        className={
-          highlight
-            ? "mt-2 block font-display text-2xl font-semibold sm:mt-0"
-            : "font-display text-xl font-semibold"
-        }
-      >
-        {price}
-      </span>
-    </div>
   );
 }

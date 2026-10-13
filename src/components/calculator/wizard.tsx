@@ -4,20 +4,14 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import {
   calculateFromWizard,
   formatM2,
   formatPln,
   resolveB2CAmount,
 } from "@/lib/calculator";
-import {
-  COVERING_LABELS,
-  DEFAULT_WIZARD_STATE,
-  FACADE_LABELS,
-  INSULATION_LABELS,
-  ROOF_TYPE_LABELS,
-} from "@/lib/constants";
+import { DEFAULT_WIZARD_STATE } from "@/lib/constants";
+import { formatPostal, isValidPostal } from "@/lib/location";
 import type {
   CoveringStandard,
   FacadeMaterial,
@@ -27,6 +21,13 @@ import type {
   WizardState,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { BuildingPreview } from "@/components/calculator/building-preview";
+import {
+  CoveringCards,
+  FacadeCards,
+  InsulationCards,
+  RoofTypeCards,
+} from "@/components/calculator/material-cards";
 
 type Mode = "b2c" | "tenant";
 
@@ -43,7 +44,7 @@ const STEPS_B2C = [
   "Pokrycie",
   "Poddasze",
   "Elewacja",
-  "Płatność",
+  "Lokalizacja i płatność",
 ];
 
 const STEPS_TENANT = [
@@ -66,7 +67,8 @@ export function CalculatorWizard({
     name: "",
     phone: "",
     email: "",
-    location: "",
+    city: "",
+    postalCode: "",
     schedule: "",
   });
   const [file, setFile] = useState<File | null>(null);
@@ -84,24 +86,65 @@ export function CalculatorWizard({
     state.facadeEnabled
   );
 
+  const showPreview =
+    (mode === "b2c" && step <= 3) ||
+    (mode === "tenant" && step <= 2);
+
+  const showFacadeOnPreview =
+    (mode === "b2c" && step === 3) ||
+    (mode === "tenant" && step === 2 && state.facadeEnabled);
+  const showInsulationOnPreview =
+    (mode === "b2c" && step === 2) ||
+    (mode === "tenant" && step === 2 && state.insulationEnabled);
+
   function patch(p: Partial<WizardState>) {
     setState((s) => ({ ...s, ...p }));
   }
 
   async function payB2C() {
-    setLoading(true);
     setError(null);
+    if (!state.clientName.trim()) {
+      setError("Podaj imię i nazwisko.");
+      return;
+    }
+    if (!state.clientPhone.trim()) {
+      setError("Podaj numer telefonu.");
+      return;
+    }
+    if (!state.email.trim()) {
+      setError("Podaj adres e-mail.");
+      return;
+    }
+    if (!state.city.trim()) {
+      setError("Podaj miasto — dopasujemy firmy z okolicy.");
+      return;
+    }
+    if (!isValidPostal(formatPostal(state.postalCode))) {
+      setError("Podaj poprawny kod pocztowy (np. 30-001).");
+      return;
+    }
+
+    setLoading(true);
     try {
+      const payload = {
+        state: {
+          ...state,
+          postalCode: formatPostal(state.postalCode),
+        },
+        result,
+      };
       const res = await fetch("/api/checkout/b2c", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ state, result }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Błąd płatności");
       window.location.href = data.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się rozpocząć płatności");
+      setError(
+        e instanceof Error ? e.message : "Nie udało się rozpocząć płatności"
+      );
       setLoading(false);
     }
   }
@@ -129,7 +172,9 @@ export function CalculatorWizard({
           clientName: lead.name,
           clientPhone: lead.phone,
           clientEmail: lead.email || undefined,
-          location: lead.location,
+          location: [lead.postalCode, lead.city].filter(Boolean).join(" "),
+          city: lead.city,
+          postalCode: lead.postalCode,
           schedule: lead.schedule,
           state,
           result,
@@ -140,7 +185,9 @@ export function CalculatorWizard({
       if (!res.ok) throw new Error(data.error || "Błąd zapisu");
       setDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Nie udało się wysłać zapytania");
+      setError(
+        e instanceof Error ? e.message : "Nie udało się wysłać zapytania"
+      );
     } finally {
       setLoading(false);
     }
@@ -160,11 +207,10 @@ export function CalculatorWizard({
   return (
     <div className="overflow-hidden rounded-2xl border border-[var(--rf-border)] bg-white shadow-sm">
       <div
-        className="h-1.5"
+        className="h-1.5 transition-[width] duration-300"
         style={{
           width: `${((step + 1) / steps.length) * 100}%`,
           background: brandColor,
-          transition: "width 0.35s ease",
         }}
       />
       <div className="border-b border-[var(--rf-border)] px-5 py-4 md:px-8">
@@ -176,63 +222,84 @@ export function CalculatorWizard({
         </h2>
       </div>
 
-      <div className="space-y-5 px-5 py-6 md:px-8">
-        {mode === "b2c" && step === 0 && (
-          <GeometryStep state={state} patch={patch} />
+      <div
+        className={cn(
+          "gap-6 px-5 py-6 md:px-8",
+          showPreview ? "grid lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]" : "block"
         )}
-        {mode === "b2c" && step === 1 && (
-          <CoveringStep state={state} patch={patch} />
-        )}
-        {mode === "b2c" && step === 2 && (
-          <InsulationStep state={state} patch={patch} paidAddon />
-        )}
-        {mode === "b2c" && step === 3 && (
-          <FacadeStep state={state} patch={patch} paidAddon />
-        )}
-        {mode === "b2c" && step === 4 && (
-          <PaywallStep
-            state={state}
-            patch={patch}
-            result={result}
-            amount={amount}
-          />
-        )}
+      >
+        <div className="space-y-5">
+          {mode === "b2c" && step === 0 && (
+            <GeometryStep state={state} patch={patch} />
+          )}
+          {mode === "b2c" && step === 1 && (
+            <CoveringStep state={state} patch={patch} />
+          )}
+          {mode === "b2c" && step === 2 && (
+            <InsulationStep state={state} patch={patch} paidAddon />
+          )}
+          {mode === "b2c" && step === 3 && (
+            <FacadeStep state={state} patch={patch} paidAddon />
+          )}
+          {mode === "b2c" && step === 4 && (
+            <PaywallStep
+              state={state}
+              patch={patch}
+              result={result}
+              amount={amount}
+            />
+          )}
 
-        {mode === "tenant" && step === 0 && (
-          <GeometryStep state={state} patch={patch} />
-        )}
-        {mode === "tenant" && step === 1 && (
-          <CoveringStep state={state} patch={patch} />
-        )}
-        {mode === "tenant" && step === 2 && (
-          <div className="space-y-6">
-            {showModules.insulation ? (
-              <InsulationStep state={state} patch={patch} />
-            ) : null}
-            {showModules.facade ? (
-              <FacadeStep state={state} patch={patch} />
-            ) : null}
-            {!showModules.insulation && !showModules.facade ? (
-              <p className="text-sm text-[var(--rf-muted)]">
-                Ta firma oferuje wycenę dachu. Przejdź dalej, aby zostawić kontakt.
-              </p>
-            ) : null}
-            <PreviewAreas result={result} />
+          {mode === "tenant" && step === 0 && (
+            <GeometryStep state={state} patch={patch} />
+          )}
+          {mode === "tenant" && step === 1 && (
+            <CoveringStep state={state} patch={patch} />
+          )}
+          {mode === "tenant" && step === 2 && (
+            <div className="space-y-6">
+              {showModules.insulation ? (
+                <InsulationStep state={state} patch={patch} />
+              ) : null}
+              {showModules.facade ? (
+                <FacadeStep state={state} patch={patch} />
+              ) : null}
+              {!showModules.insulation && !showModules.facade ? (
+                <p className="text-sm text-[var(--rf-muted)]">
+                  Ta firma oferuje wycenę dachu. Przejdź dalej, aby zostawić
+                  kontakt.
+                </p>
+              ) : null}
+              <PreviewAreas result={result} />
+            </div>
+          )}
+          {mode === "tenant" && step === 3 && (
+            <LeadGate
+              lead={lead}
+              setLead={setLead}
+              setFile={setFile}
+              result={result}
+            />
+          )}
+
+          {error ? (
+            <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {error}
+            </p>
+          ) : null}
+        </div>
+
+        {showPreview ? (
+          <div className="lg:sticky lg:top-4 lg:self-start">
+            <BuildingPreview
+              state={state}
+              showFacade={showFacadeOnPreview}
+              showInsulation={showInsulationOnPreview}
+            />
+            <p className="mt-2 text-center text-xs text-[var(--rf-muted)]">
+              Zmieniaj wymiary i typ dachu — podgląd aktualizuje się od razu.
+            </p>
           </div>
-        )}
-        {mode === "tenant" && step === 3 && (
-          <LeadGate
-            lead={lead}
-            setLead={setLead}
-            setFile={setFile}
-            result={result}
-          />
-        )}
-
-        {error ? (
-          <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            {error}
-          </p>
         ) : null}
       </div>
 
@@ -248,11 +315,13 @@ export function CalculatorWizard({
         {mode === "b2c" && step === steps.length - 1 ? (
           <Button
             type="button"
-            disabled={loading || !state.email}
+            disabled={loading}
             onClick={payB2C}
             style={{ background: brandColor }}
           >
-            {loading ? "Przekierowanie…" : "Zapłać i Pobierz Raport PDF"}
+            {loading
+              ? "Przekierowanie…"
+              : "Zapłać — raport PDF + oferty firm"}
           </Button>
         ) : mode === "tenant" && step === steps.length - 1 ? (
           <Button
@@ -285,55 +354,57 @@ function GeometryStep({
   patch: (p: Partial<WizardState>) => void;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Długość budynku (m)">
-        <Input
-          type="number"
-          min={3}
-          step={0.1}
-          value={state.lengthM}
-          onChange={(e) => patch({ lengthM: Number(e.target.value) })}
-        />
-      </Field>
-      <Field label="Szerokość budynku (m)">
-        <Input
-          type="number"
-          min={3}
-          step={0.1}
-          value={state.widthM}
-          onChange={(e) => patch({ widthM: Number(e.target.value) })}
-        />
-      </Field>
-      <Field label="Typ dachu">
-        <Select
+    <div className="space-y-5">
+      <div>
+        <Label className="mb-2">Typ dachu</Label>
+        <RoofTypeCards
           value={state.roofType}
-          onChange={(e) => patch({ roofType: e.target.value as RoofType })}
-        >
-          {Object.entries(ROOF_TYPE_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </Select>
-      </Field>
-      <Field label="Kąt nachylenia (°)">
-        <Input
-          type="number"
-          min={0}
-          max={60}
-          value={state.pitchDeg}
-          onChange={(e) => patch({ pitchDeg: Number(e.target.value) })}
+          onChange={(roofType: RoofType) => patch({ roofType })}
         />
-      </Field>
-      <Field label="Okap (m)">
-        <Input
-          type="number"
-          min={0}
-          step={0.1}
-          value={state.eavesM}
-          onChange={(e) => patch({ eavesM: Number(e.target.value) })}
-        />
-      </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Długość budynku (m)">
+          <Input
+            type="number"
+            min={3}
+            step={0.1}
+            value={state.lengthM}
+            onChange={(e) => patch({ lengthM: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Szerokość budynku (m)">
+          <Input
+            type="number"
+            min={3}
+            step={0.1}
+            value={state.widthM}
+            onChange={(e) => patch({ widthM: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Kąt nachylenia (°)">
+          <Input
+            type="number"
+            min={0}
+            max={60}
+            value={state.pitchDeg}
+            onChange={(e) => patch({ pitchDeg: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Okap (m)">
+          <Input
+            type="number"
+            min={0}
+            step={0.1}
+            value={state.eavesM}
+            onChange={(e) => patch({ eavesM: Number(e.target.value) })}
+          />
+        </Field>
+      </div>
+      <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+        Po prawej zobaczysz realistyczny podgląd dachu. Przełącz{" "}
+        <strong>3D</strong> / <strong>Przekrój</strong> — wymiary długości,
+        szerokości i wysokości aktualizują się na bieżąco.
+      </p>
     </div>
   );
 }
@@ -346,21 +417,14 @@ function CoveringStep({
   patch: (p: Partial<WizardState>) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <Field label="Standard pokrycia">
-        <Select
+    <div className="space-y-5">
+      <div>
+        <Label className="mb-2">Standard pokrycia</Label>
+        <CoveringCards
           value={state.covering}
-          onChange={(e) =>
-            patch({ covering: e.target.value as CoveringStandard })
-          }
-        >
-          {Object.entries(COVERING_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>
-              {v}
-            </option>
-          ))}
-        </Select>
-      </Field>
+          onChange={(covering: CoveringStandard) => patch({ covering })}
+        />
+      </div>
       <label className="flex items-center gap-3 text-sm">
         <input
           type="checkbox"
@@ -410,26 +474,16 @@ function InsulationStep({
       </label>
       <div
         className={cn(
-          "grid gap-4 sm:grid-cols-2",
+          "space-y-4",
           !state.insulationEnabled && "pointer-events-none opacity-40"
         )}
       >
-        <Field label="Materiał">
-          <Select
-            value={state.insulationMaterial}
-            onChange={(e) =>
-              patch({
-                insulationMaterial: e.target.value as InsulationMaterial,
-              })
-            }
-          >
-            {Object.entries(INSULATION_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <InsulationCards
+          value={state.insulationMaterial}
+          onChange={(insulationMaterial: InsulationMaterial) =>
+            patch({ insulationMaterial })
+          }
+        />
         <Field label="Grubość warstwy (cm)">
           <Input
             type="number"
@@ -473,24 +527,16 @@ function FacadeStep({
       </label>
       <div
         className={cn(
-          "grid gap-4 sm:grid-cols-2",
+          "space-y-4",
           !state.facadeEnabled && "pointer-events-none opacity-40"
         )}
       >
-        <Field label="Materiał">
-          <Select
-            value={state.facadeMaterial}
-            onChange={(e) =>
-              patch({ facadeMaterial: e.target.value as FacadeMaterial })
-            }
-          >
-            {Object.entries(FACADE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <FacadeCards
+          value={state.facadeMaterial}
+          onChange={(facadeMaterial: FacadeMaterial) =>
+            patch({ facadeMaterial })
+          }
+        />
         <Field label="Wysokość kondygnacji (m)">
           <Input
             type="number"
@@ -522,26 +568,90 @@ function PaywallStep({
   return (
     <div className="space-y-5">
       <PreviewAreas result={result} />
-      <div className="rounded-xl bg-[var(--rf-sand)] px-4 py-4">
-        <p className="text-sm text-[var(--rf-muted)]">Wariant płatności</p>
+      <div className="rounded-xl border border-[var(--rf-border)] bg-[var(--rf-sand)]/70 px-4 py-4">
+        <p className="text-sm text-[var(--rf-muted)]">
+          Szacowany zakres inwestycji
+        </p>
+        <p className="font-display text-2xl font-semibold md:text-3xl">
+          {formatPln(result.priceMin)} – {formatPln(result.priceMax)}
+        </p>
+        <p className="mt-3 text-sm text-[var(--rf-muted)]">Opłata za dostęp</p>
         <p className="font-display text-3xl font-semibold">{amount} zł</p>
         <p className="mt-1 text-xs text-[var(--rf-muted)]">
           {state.insulationEnabled && state.facadeEnabled
-            ? "Pakiet FULL BUNDLE (promocja)"
+            ? "Pakiet FULL BUNDLE — dach + poddasze + elewacja"
             : state.insulationEnabled || state.facadeEnabled
               ? "Dach + wybrany dodatek"
               : "Sam dach"}
         </p>
+        <ul className="mt-3 space-y-1 text-xs text-slate-700">
+          <li>✓ Raport PDF z widełkami kosztów</li>
+          <li>✓ Dopasowanie firm dekarskich z Twojej okolicy</li>
+          <li>✓ Firmy mogą zaproponować swoją cenę (konkurs ofert)</li>
+        </ul>
       </div>
-      <Field label="E-mail odbiorcy raportu">
-        <Input
-          type="email"
-          required
-          placeholder="jan@example.pl"
-          value={state.email}
-          onChange={(e) => patch({ email: e.target.value })}
-        />
-      </Field>
+
+      <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-teal-950">
+        <p className="font-semibold">Po co kod pocztowy i miasto?</p>
+        <p className="mt-1 text-teal-900/80">
+          Dzięki temu pokażemy Twoje zapytanie tylko firmom z okolicy. One mogą
+          zaproponować niższą cenę materiałów lub robocizny — Ty wybierasz, kogo
+          zaprosisz do współpracy.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Imię i nazwisko">
+          <Input
+            required
+            value={state.clientName}
+            onChange={(e) => patch({ clientName: e.target.value })}
+            placeholder="Jan Kowalski"
+          />
+        </Field>
+        <Field label="Telefon">
+          <Input
+            type="tel"
+            required
+            value={state.clientPhone}
+            onChange={(e) => patch({ clientPhone: e.target.value })}
+            placeholder="+48 600 000 000"
+          />
+        </Field>
+        <Field label="E-mail (raport PDF)">
+          <Input
+            type="email"
+            required
+            placeholder="jan@example.pl"
+            value={state.email}
+            onChange={(e) => patch({ email: e.target.value })}
+          />
+        </Field>
+        <Field label="Planowany termin prac">
+          <Input
+            value={state.schedule}
+            onChange={(e) => patch({ schedule: e.target.value })}
+            placeholder="np. wiosna 2027"
+          />
+        </Field>
+        <Field label="Miasto">
+          <Input
+            required
+            value={state.city}
+            onChange={(e) => patch({ city: e.target.value })}
+            placeholder="np. Kraków"
+          />
+        </Field>
+        <Field label="Kod pocztowy">
+          <Input
+            required
+            value={state.postalCode}
+            onChange={(e) => patch({ postalCode: formatPostal(e.target.value) })}
+            placeholder="30-001"
+            maxLength={6}
+          />
+        </Field>
+      </div>
     </div>
   );
 }
@@ -556,7 +666,8 @@ function LeadGate({
     name: string;
     phone: string;
     email: string;
-    location: string;
+    city: string;
+    postalCode: string;
     schedule: string;
   };
   setLead: (v: typeof lead) => void;
@@ -571,6 +682,10 @@ function LeadGate({
         <strong>
           {formatPln(result.priceMin)} – {formatPln(result.priceMax)}
         </strong>
+      </p>
+      <p className="rounded-lg bg-teal-50 px-3 py-2 text-xs text-teal-900">
+        Ta wycena jest bezpłatna — firmę opłaca abonament RoofFlow. Podaj lokalizację,
+        żeby wykonawca wiedział, gdzie ma jechać na pomiar.
       </p>
       <Field label="Imię i nazwisko">
         <Input
@@ -594,12 +709,26 @@ function LeadGate({
           onChange={(e) => setLead({ ...lead, email: e.target.value })}
         />
       </Field>
-      <Field label="Miejscowość">
-        <Input
-          value={lead.location}
-          onChange={(e) => setLead({ ...lead, location: e.target.value })}
-        />
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Miasto">
+          <Input
+            value={lead.city}
+            onChange={(e) => setLead({ ...lead, city: e.target.value })}
+            required
+            placeholder="np. Kraków"
+          />
+        </Field>
+        <Field label="Kod pocztowy">
+          <Input
+            value={lead.postalCode}
+            onChange={(e) =>
+              setLead({ ...lead, postalCode: formatPostal(e.target.value) })
+            }
+            placeholder="30-001"
+            maxLength={6}
+          />
+        </Field>
+      </div>
       <Field label="Planowany termin budowy">
         <Input
           value={lead.schedule}
@@ -629,9 +758,7 @@ function PreviewAreas({
       <Stat
         label="Poddasze"
         value={
-          result.insulationAreaM2
-            ? formatM2(result.insulationAreaM2)
-            : "—"
+          result.insulationAreaM2 ? formatM2(result.insulationAreaM2) : "—"
         }
       />
       <Stat

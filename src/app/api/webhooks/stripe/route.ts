@@ -43,6 +43,9 @@ export async function POST(request: Request) {
       }
       if (session.metadata?.type === "b2b_subscription" && session.subscription) {
         const plan = session.metadata.plan || "starter";
+        const insulation =
+          plan === "pro" || session.metadata.insulation === "true";
+        const facade = plan === "pro" || session.metadata.facade === "true";
         await supabase
           .from("tenants")
           .update({
@@ -50,8 +53,8 @@ export async function POST(request: Request) {
             stripe_customer_id: String(session.customer || ""),
             subscription_status: "trialing",
             plan_tier: plan,
-            has_insulation_addon: plan === "pro",
-            has_facade_addon: plan === "pro",
+            has_insulation_addon: insulation,
+            has_facade_addon: facade,
           })
           .eq("user_id", session.metadata.user_id);
       }
