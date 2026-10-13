@@ -21,6 +21,8 @@ export const B2B_PRICES = {
   /** Przy STARTER + oba add-ony — drugi add-on w promocji −50% */
   addonBundleHalfPrice: 24.5,
   pro: 349,
+  /** Płatność z góry za rok — 20% zniżki na każdy miesiąc */
+  annualDiscountPercent: 20,
   trialDays: 14,
 } as const;
 

@@ -15,6 +15,7 @@ export type DemoSession = {
   /** Add-ony STARTER (w PRO zawsze true) */
   insulationAddon?: boolean;
   facadeAddon?: boolean;
+  billingInterval?: "month" | "year";
   createdAt: string;
 };
 

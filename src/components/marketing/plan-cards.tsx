@@ -5,30 +5,79 @@ import {
   B2B_ADDONS,
   B2B_PLANS,
   B2C_PACKAGES,
-  computeB2BMonthly,
+  computeB2BPricing,
+  formatPlnAmount,
+  withAnnualDiscount,
+  yearlyUpfrontTotal,
   type B2BAddonSelection,
+  type B2BBillingInterval,
   type B2BPlanId,
 } from "@/lib/plans";
 import { B2B_PRICES } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 
+export function B2BBillingToggle({
+  value,
+  onChange,
+}: {
+  value: B2BBillingInterval;
+  onChange: (v: B2BBillingInterval) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-xl border border-[var(--rf-border)] bg-white p-1">
+      <button
+        type="button"
+        onClick={() => onChange("month")}
+        className={cn(
+          "rounded-lg px-4 py-2 text-sm font-semibold transition",
+          value === "month"
+            ? "bg-[var(--rf-ink)] text-white"
+            : "text-[var(--rf-muted)] hover:text-[var(--rf-ink)]"
+        )}
+      >
+        Miesięcznie
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("year")}
+        className={cn(
+          "rounded-lg px-4 py-2 text-sm font-semibold transition",
+          value === "year"
+            ? "bg-[var(--rf-ink)] text-white"
+            : "text-[var(--rf-muted)] hover:text-[var(--rf-ink)]"
+        )}
+      >
+        Rocznie (−{B2B_PRICES.annualDiscountPercent}%)
+      </button>
+    </div>
+  );
+}
+
 export function B2BPlanCards({
   selected,
   onSelect,
   interactive = false,
   ctaHref,
+  billingInterval = "month",
 }: {
   selected?: B2BPlanId;
   onSelect?: (id: B2BPlanId) => void;
   interactive?: boolean;
   ctaHref?: string;
+  billingInterval?: B2BBillingInterval;
 }) {
+  const annual = billingInterval === "year";
+
   return (
     <div className="grid gap-5 lg:grid-cols-2">
       {B2B_PLANS.map((plan) => {
         const active = selected === plan.id;
         const Wrapper = interactive ? "button" : "div";
+        const displayMonthly = annual
+          ? withAnnualDiscount(plan.price)
+          : plan.price;
+        const yearTotal = yearlyUpfrontTotal(plan.price);
         return (
           <Wrapper
             key={plan.id}
@@ -60,11 +109,24 @@ export function B2BPlanCards({
               {plan.name}
             </p>
             <div className="mt-3 flex items-end gap-1">
+              {annual ? (
+                <span className="mb-1 mr-1 text-lg text-slate-400 line-through">
+                  {plan.price}
+                </span>
+              ) : null}
               <span className="font-display text-4xl font-semibold tracking-tight">
-                {plan.price}
+                {formatPlnAmount(displayMonthly)}
               </span>
-              <span className="mb-1 text-sm text-[var(--rf-muted)]">{plan.period}</span>
+              <span className="mb-1 text-sm text-[var(--rf-muted)]">
+                zł / m-c
+              </span>
             </div>
+            {annual ? (
+              <p className="mt-1 text-xs font-semibold text-[var(--rf-accent)]">
+                −{B2B_PRICES.annualDiscountPercent}% · płatność z góry{" "}
+                {formatPlnAmount(yearTotal)} zł / rok
+              </p>
+            ) : null}
             <p className="mt-3 text-sm font-medium text-[var(--rf-ink)]">{plan.tagline}</p>
             <p className="mt-2 text-sm leading-relaxed text-[var(--rf-muted)]">
               {plan.description}
@@ -123,6 +185,8 @@ export function B2BAddonsList() {
       <p className="text-sm text-[var(--rf-muted)]">
         Do planu STARTER możesz dokładać moduły (po {B2B_PRICES.insulationAddon}{" "}
         zł). Gdy weźmiesz oba — drugi w promocji −50%. W PRO wszystko w cenie.
+        Płatność z góry za rok = dodatkowe −{B2B_PRICES.annualDiscountPercent}% na
+        każdy miesiąc.
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         {B2B_ADDONS.map((addon) => (
@@ -150,13 +214,20 @@ export function B2BAddonPicker({
   plan,
   value,
   onChange,
+  billingInterval = "month",
 }: {
   plan: B2BPlanId;
   value: B2BAddonSelection;
   onChange: (next: B2BAddonSelection) => void;
+  billingInterval?: B2BBillingInterval;
 }) {
-  const pricing = computeB2BMonthly({ plan, addons: value });
+  const pricing = computeB2BPricing({
+    plan,
+    addons: value,
+    interval: billingInterval,
+  });
   const isPro = plan === "pro";
+  const annual = billingInterval === "year";
 
   function toggle(id: keyof B2BAddonSelection) {
     if (isPro) return;
@@ -256,22 +327,22 @@ export function B2BAddonPicker({
           {B2B_PRICES.addonBundleHalfPrice} zł zamiast {B2B_PRICES.facadeAddon}{" "}
           zł (−50%). Razem{" "}
           <strong>
-            {pricing.total.toLocaleString("pl-PL", {
-              minimumFractionDigits: pricing.total % 1 ? 1 : 0,
-            })}{" "}
-            zł / m-c
+            {formatPlnAmount(pricing.total)} zł / m-c
           </strong>
+          {annual
+            ? ` → po −${B2B_PRICES.annualDiscountPercent}%: ${formatPlnAmount(pricing.effectiveMonthly)} zł / m-c · ${formatPlnAmount(pricing.chargeTotal)} zł z góry za rok`
+            : ""}
           .
         </p>
       ) : (
         <p className="text-sm text-[var(--rf-muted)]">
-          Suma miesięczna po trialu:{" "}
+          {annual ? "Efektywnie po zniżce rocznej: " : "Suma miesięczna po trialu: "}
           <strong className="text-[var(--rf-ink)]">
-            {pricing.total.toLocaleString("pl-PL", {
-              minimumFractionDigits: pricing.total % 1 ? 1 : 0,
-            })}{" "}
-            zł
+            {formatPlnAmount(pricing.effectiveMonthly)} zł / m-c
           </strong>
+          {annual
+            ? ` · płatność ${formatPlnAmount(pricing.chargeTotal)} zł / rok`
+            : ""}
           {isPro
             ? " (PRO ALL-IN-ONE)"
             : value.insulation || value.facade

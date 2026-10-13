@@ -8,11 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   B2BAddonPicker,
+  B2BBillingToggle,
   B2BPlanCards,
 } from "@/components/marketing/plan-cards";
+import { B2B_PRICES } from "@/lib/constants";
 import {
-  computeB2BMonthly,
+  computeB2BPricing,
+  formatPlnAmount,
   type B2BAddonSelection,
+  type B2BBillingInterval,
   type B2BPlanId,
 } from "@/lib/plans";
 import { slugify } from "@/lib/utils";
@@ -30,6 +34,8 @@ export function RegisterForm() {
   const [city, setCity] = useState("Kraków");
   const [postalCode, setPostalCode] = useState("30-001");
   const [plan, setPlan] = useState<B2BPlanId>(initialPlan);
+  const [billingInterval, setBillingInterval] =
+    useState<B2BBillingInterval>("month");
   const [addons, setAddons] = useState<B2BAddonSelection>({
     insulation: false,
     facade: false,
@@ -37,7 +43,11 @@ export function RegisterForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const pricing = computeB2BMonthly({ plan, addons });
+  const pricing = computeB2BPricing({
+    plan,
+    addons,
+    interval: billingInterval,
+  });
 
   function selectPlan(next: B2BPlanId) {
     setPlan(next);
@@ -67,6 +77,7 @@ export function RegisterForm() {
           plan,
           insulation,
           facade,
+          billingInterval,
           checkout: true,
         }),
       });
@@ -81,6 +92,7 @@ export function RegisterForm() {
           slug: slugify(company),
           insulation,
           facade,
+          billingInterval,
           demo: true,
         }),
       });
@@ -91,7 +103,7 @@ export function RegisterForm() {
       }
 
       router.push(
-        `/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}`
+        `/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}&billing=${billingInterval}`
       );
       router.refresh();
     } catch (err) {
@@ -116,13 +128,29 @@ export function RegisterForm() {
       <section>
         <h2 className="font-display text-2xl font-semibold">1. Wybierz plan</h2>
         <p className="mt-1 text-sm text-[var(--rf-muted)]">
-          STARTER = dach. Dokładasz poddasze i/lub elewację poniżej. PRO = wszystko
-          od razu (whitelabel, domena, bez limitu leadów).
+          STARTER = dach + opcjonalne add-ony. PRO = wszystko w cenie. Rocznie =
+          płatność z góry i −{B2B_PRICES.annualDiscountPercent}% na każdy miesiąc.
         </p>
-        <div className="mt-5">
-          <B2BPlanCards interactive selected={plan} onSelect={selectPlan} />
+        <div className="mt-4">
+          <B2BBillingToggle
+            value={billingInterval}
+            onChange={setBillingInterval}
+          />
         </div>
-        <B2BAddonPicker plan={plan} value={addons} onChange={setAddons} />
+        <div className="mt-5">
+          <B2BPlanCards
+            interactive
+            selected={plan}
+            onSelect={selectPlan}
+            billingInterval={billingInterval}
+          />
+        </div>
+        <B2BAddonPicker
+          plan={plan}
+          value={addons}
+          onChange={setAddons}
+          billingInterval={billingInterval}
+        />
       </section>
 
       <section>
@@ -209,10 +237,11 @@ export function RegisterForm() {
           {plan === "starter" && addons.insulation ? " + poddasze" : ""}
           {plan === "starter" && addons.facade ? " + elewacja" : ""}
           {" · "}
-          {pricing.total.toLocaleString("pl-PL", {
-            minimumFractionDigits: pricing.total % 1 ? 1 : 0,
-          })}{" "}
-          zł / m-c po trialu · 14 dni gratis
+          {formatPlnAmount(pricing.effectiveMonthly)} zł / m-c
+          {billingInterval === "year"
+            ? ` (−${B2B_PRICES.annualDiscountPercent}%) · ${formatPlnAmount(pricing.chargeTotal)} zł / rok z góry`
+            : ""}
+          {" · "}14 dni gratis
         </p>
         <Button type="submit" size="lg" disabled={loading}>
           {loading ? "Tworzenie konta…" : "Wejdź do panelu z wybranym planem"}
