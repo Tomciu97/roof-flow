@@ -77,6 +77,31 @@ export type B2BAddonSelection = {
   facade: boolean;
 };
 
+export type B2BBillingInterval = "month" | "year";
+
+export function roundPln(n: number): number {
+  return Math.round(n * 100) / 100;
+}
+
+/** Miesięczna cena po zniżce rocznej (−20%). */
+export function withAnnualDiscount(monthlyPln: number): number {
+  return roundPln(
+    monthlyPln * (1 - B2B_PRICES.annualDiscountPercent / 100)
+  );
+}
+
+/** Kwota płatności z góry za 12 miesięcy (−20%). */
+export function yearlyUpfrontTotal(monthlyPln: number): number {
+  return roundPln(withAnnualDiscount(monthlyPln) * 12);
+}
+
+export function formatPlnAmount(n: number): string {
+  return n.toLocaleString("pl-PL", {
+    minimumFractionDigits: n % 1 ? 1 : 0,
+    maximumFractionDigits: 2,
+  });
+}
+
 /** Rozbicie miesięcznej składki STARTER / PRO z add-onami. */
 export function computeB2BMonthly(opts: {
   plan: B2BPlanId;
@@ -121,6 +146,32 @@ export function computeB2BMonthly(opts: {
     total: B2B_PRICES.starter + insulationPrice + facadePrice,
     bundlePromo: both,
     discountedAddon,
+  };
+}
+
+/** Składka z uwzględnieniem miesięcznie vs rocznie (−20%). */
+export function computeB2BPricing(opts: {
+  plan: B2BPlanId;
+  addons: B2BAddonSelection;
+  interval: B2BBillingInterval;
+}) {
+  const monthly = computeB2BMonthly(opts);
+  const annual = opts.interval === "year";
+  const effectiveMonthly = annual
+    ? withAnnualDiscount(monthly.total)
+    : monthly.total;
+  const chargeTotal = annual
+    ? yearlyUpfrontTotal(monthly.total)
+    : monthly.total;
+
+  return {
+    ...monthly,
+    interval: opts.interval,
+    /** Cena „za miesiąc” (po −20% przy roku) */
+    effectiveMonthly,
+    /** Kwota do zapłaty za okres (m-c albo rok z góry) */
+    chargeTotal,
+    annualDiscountPercent: annual ? B2B_PRICES.annualDiscountPercent : 0,
   };
 }
 

@@ -77,6 +77,8 @@ export async function POST(request: Request) {
     plan === "pro" ? true : Boolean(body.insulation ?? body.insulationAddon);
   const facadeAddon =
     plan === "pro" ? true : Boolean(body.facade ?? body.facadeAddon);
+  const billingInterval =
+    body.billingInterval === "year" ? ("year" as const) : ("month" as const);
 
   const city = String(body.city || "").trim() || "Kraków";
   const postalCode = formatPostal(
@@ -104,6 +106,7 @@ export async function POST(request: Request) {
     serviceRadiusKm,
     insulationAddon,
     facadeAddon,
+    billingInterval,
     createdAt: new Date().toISOString(),
   };
 

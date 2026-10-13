@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { getB2BPriceId, getStripe } from "@/lib/stripe";
 import { APP_URL, B2B_PRICES } from "@/lib/constants";
-import { computeB2BMonthly } from "@/lib/plans";
+import {
+  computeB2BMonthly,
+  computeB2BPricing,
+  yearlyUpfrontTotal,
+  type B2BBillingInterval,
+} from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -11,14 +16,20 @@ export async function POST(request: Request) {
       slug?: string;
       insulation?: boolean;
       facade?: boolean;
+      billingInterval?: B2BBillingInterval;
     };
 
     const plan = body.plan || "starter";
     const insulation = plan === "pro" ? true : Boolean(body.insulation);
     const facade = plan === "pro" ? true : Boolean(body.facade);
-    const pricing = computeB2BMonthly({
+    const billingInterval: B2BBillingInterval =
+      body.billingInterval === "year" ? "year" : "month";
+    const annual = billingInterval === "year";
+
+    const pricing = computeB2BPricing({
       plan,
       addons: { insulation, facade },
+      interval: billingInterval,
     });
 
     if (
@@ -26,9 +37,11 @@ export async function POST(request: Request) {
       !process.env.STRIPE_SECRET_KEY.startsWith("sk_")
     ) {
       return NextResponse.json({
-        url: `${APP_URL}/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}`,
+        url: `${APP_URL}/dashboard?plan=${plan}&trial=1&insulation=${insulation ? 1 : 0}&facade=${facade ? 1 : 0}&billing=${billingInterval}`,
         demo: true,
-        monthlyTotal: pricing.total,
+        monthlyTotal: pricing.effectiveMonthly,
+        chargeTotal: pricing.chargeTotal,
+        billingInterval,
         message:
           "Stripe nie jest skonfigurowany. Ustaw STRIPE_SECRET_KEY oraz Price ID (STRIPE_PRICE_B2B_*), aby uruchomić Checkout z trialem 14 dni.",
       });
@@ -68,44 +81,33 @@ export async function POST(request: Request) {
       }
     }
 
-    const prices = getB2BPriceId(plan, {
-      insulation: plan === "starter" && insulation,
-      facade: plan === "starter" && facade,
-    });
-
     const line_items: {
       price?: string;
       price_data?: object;
       quantity: number;
     }[] = [];
 
-    if (prices.main) {
-      line_items.push({ price: prices.main, quantity: 1 });
-      // Gotowe Price ID add-onów — pełna cena; promocję −50% rozliczamy
-      // przez price_data gdy brak osobnego Price ID promocji.
-      if (prices.addons.length && !pricing.bundlePromo) {
-        for (const addon of prices.addons) {
-          line_items.push({ price: addon, quantity: 1 });
+    // Rocznie zawsze price_data (Price ID w env są miesięczne)
+    if (!annual) {
+      const prices = getB2BPriceId(plan, {
+        insulation: plan === "starter" && insulation,
+        facade: plan === "starter" && facade,
+      });
+
+      if (prices.main) {
+        line_items.push({ price: prices.main, quantity: 1 });
+        if (prices.addons.length && !pricing.bundlePromo) {
+          for (const addon of prices.addons) {
+            line_items.push({ price: addon, quantity: 1 });
+          }
+        } else if (plan === "starter") {
+          appendAddonPriceData(line_items, pricing, insulation, facade, false);
         }
-      } else if (plan === "starter") {
-        appendAddonPriceData(line_items, pricing, insulation, facade);
+      } else {
+        appendMonthlyFallback(line_items, plan, pricing, insulation, facade);
       }
     } else {
-      line_items.push({
-        quantity: 1,
-        price_data: {
-          currency: "pln",
-          unit_amount: Math.round(pricing.base * 100),
-          recurring: { interval: "month" },
-          product_data: {
-            name:
-              plan === "pro" ? "RoofFlow PRO ALL-IN-ONE" : "RoofFlow STARTER",
-          },
-        },
-      });
-      if (plan === "starter") {
-        appendAddonPriceData(line_items, pricing, insulation, facade);
-      }
+      appendYearlyLineItems(line_items, plan, pricing, insulation, facade);
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -119,6 +121,7 @@ export async function POST(request: Request) {
           plan,
           insulation: String(insulation),
           facade: String(facade),
+          billing_interval: billingInterval,
           tenant_id: tenant?.id || "",
         },
       },
@@ -130,6 +133,7 @@ export async function POST(request: Request) {
         user_id: user.id,
         insulation: String(insulation),
         facade: String(facade),
+        billing_interval: billingInterval,
       },
     });
 
@@ -143,20 +147,80 @@ export async function POST(request: Request) {
   }
 }
 
+function appendMonthlyFallback(
+  line_items: { price_data?: object; quantity: number }[],
+  plan: "starter" | "pro",
+  pricing: ReturnType<typeof computeB2BPricing>,
+  insulation: boolean,
+  facade: boolean
+) {
+  line_items.push({
+    quantity: 1,
+    price_data: {
+      currency: "pln",
+      unit_amount: Math.round(pricing.base * 100),
+      recurring: { interval: "month" },
+      product_data: {
+        name: plan === "pro" ? "RoofFlow PRO ALL-IN-ONE" : "RoofFlow STARTER",
+      },
+    },
+  });
+  if (plan === "starter") {
+    appendAddonPriceData(line_items, pricing, insulation, facade, false);
+  }
+}
+
+function appendYearlyLineItems(
+  line_items: { price_data?: object; quantity: number }[],
+  plan: "starter" | "pro",
+  pricing: ReturnType<typeof computeB2BPricing>,
+  insulation: boolean,
+  facade: boolean
+) {
+  line_items.push({
+    quantity: 1,
+    price_data: {
+      currency: "pln",
+      unit_amount: Math.round(yearlyUpfrontTotal(pricing.base) * 100),
+      recurring: { interval: "year" },
+      product_data: {
+        name:
+          plan === "pro"
+            ? `RoofFlow PRO ALL-IN-ONE (rok, −${B2B_PRICES.annualDiscountPercent}%)`
+            : `RoofFlow STARTER (rok, −${B2B_PRICES.annualDiscountPercent}%)`,
+      },
+    },
+  });
+  if (plan === "starter") {
+    appendAddonPriceData(line_items, pricing, insulation, facade, true);
+  }
+}
+
 function appendAddonPriceData(
   line_items: { price_data?: object; quantity: number }[],
   pricing: ReturnType<typeof computeB2BMonthly>,
   insulation: boolean,
-  facade: boolean
+  facade: boolean,
+  annual: boolean
 ) {
+  const interval = annual ? "year" : "month";
+  const amount = (monthly: number) =>
+    annual
+      ? Math.round(yearlyUpfrontTotal(monthly) * 100)
+      : Math.round(monthly * 100);
+
   if (insulation && pricing.insulationPrice > 0) {
     line_items.push({
       quantity: 1,
       price_data: {
         currency: "pln",
-        unit_amount: Math.round(pricing.insulationPrice * 100),
-        recurring: { interval: "month" },
-        product_data: { name: "RoofFlow Add-on Poddasze" },
+        unit_amount: amount(pricing.insulationPrice),
+        recurring: { interval },
+        product_data: {
+          name: annual
+            ? `RoofFlow Add-on Poddasze (rok, −${B2B_PRICES.annualDiscountPercent}%)`
+            : "RoofFlow Add-on Poddasze",
+        },
       },
     });
   }
@@ -165,12 +229,16 @@ function appendAddonPriceData(
       quantity: 1,
       price_data: {
         currency: "pln",
-        unit_amount: Math.round(pricing.facadePrice * 100),
-        recurring: { interval: "month" },
+        unit_amount: amount(pricing.facadePrice),
+        recurring: { interval },
         product_data: {
-          name: pricing.bundlePromo
-            ? "RoofFlow Add-on Elewacja (−50% pakiet)"
-            : "RoofFlow Add-on Elewacja",
+          name: annual
+            ? pricing.bundlePromo
+              ? `RoofFlow Add-on Elewacja (−50% pakiet, rok −${B2B_PRICES.annualDiscountPercent}%)`
+              : `RoofFlow Add-on Elewacja (rok, −${B2B_PRICES.annualDiscountPercent}%)`
+            : pricing.bundlePromo
+              ? "RoofFlow Add-on Elewacja (−50% pakiet)"
+              : "RoofFlow Add-on Elewacja",
         },
       },
     });
